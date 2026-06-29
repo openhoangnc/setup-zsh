@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}=== Starting Zsh Uninstall ===${NC}"
 
 ZSHRC="$HOME/.zshrc"
-PLUGIN_DIR="$HOME/.setup-zsh"
+PLUGIN_DIR="$HOME/.zsh/setup-zsh"
 
 # 1. Remove configuration block from ~/.zshrc
 if [[ -f "$ZSHRC" ]]; then

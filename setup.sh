@@ -27,38 +27,39 @@ for cmd in curl unzip zsh awk; do
 done
 
 # 3. Create Isolated Plugins Directory (avoids collision with ~/.zsh/plugins)
-PLUGIN_DIR="$HOME/.setup-zsh/plugins"
+PLUGIN_DIR="$HOME/.zsh/setup-zsh/plugins"
 echo -e "${BLUE}Creating isolated plugins directory at $PLUGIN_DIR...${NC}"
 mkdir -p "$PLUGIN_DIR"
 
-# 4. Install zsh-syntax-highlighting
+# 4. Install Plugins (Syntax Highlighting & Autosuggestions)
 SYNTAX_DIR="$PLUGIN_DIR/zsh-syntax-highlighting"
-if [[ ! -d "$SYNTAX_DIR" ]]; then
-	echo -e "${BLUE}Installing zsh-syntax-highlighting...${NC}"
-	TEMP_ZIP=$(mktemp /tmp/zsh-syntax-highlighting.XXXXXX.zip)
-	TEMP_DIR=$(mktemp -d /tmp/zsh-syntax-highlighting.XXXXXX)
-	curl -L -s https://github.com/zsh-users/zsh-syntax-highlighting/archive/refs/heads/master.zip -o "$TEMP_ZIP"
-	unzip -q -o "$TEMP_ZIP" -d "$TEMP_DIR"
-	mv "$TEMP_DIR"/zsh-syntax-highlighting-master "$SYNTAX_DIR"
-	rm -rf "$TEMP_ZIP" "$TEMP_DIR"
-	echo -e "${GREEN}✓ zsh-syntax-highlighting installed.${NC}"
-else
-	echo -e "${GREEN}✓ zsh-syntax-highlighting already installed.${NC}"
+SUGGEST_DIR="$PLUGIN_DIR/zsh-autosuggestions"
+
+# Determine script directory if run from local file
+SCRIPT_DIR=""
+if [[ -n "${BASH_SOURCE[0]}" && -f "${BASH_SOURCE[0]}" ]]; then
+	SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
-# 5. Install zsh-autosuggestions
-SUGGEST_DIR="$PLUGIN_DIR/zsh-autosuggestions"
-if [[ ! -d "$SUGGEST_DIR" ]]; then
-	echo -e "${BLUE}Installing zsh-autosuggestions...${NC}"
-	TEMP_ZIP=$(mktemp /tmp/zsh-autosuggestions.XXXXXX.zip)
-	TEMP_DIR=$(mktemp -d /tmp/zsh-autosuggestions.XXXXXX)
-	curl -L -s https://github.com/zsh-users/zsh-autosuggestions/archive/refs/heads/master.zip -o "$TEMP_ZIP"
-	unzip -q -o "$TEMP_ZIP" -d "$TEMP_DIR"
-	mv "$TEMP_DIR"/zsh-autosuggestions-master "$SUGGEST_DIR"
-	rm -rf "$TEMP_ZIP" "$TEMP_DIR"
-	echo -e "${GREEN}✓ zsh-autosuggestions installed.${NC}"
+if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/plugins/zsh-autosuggestions" && -d "$SCRIPT_DIR/plugins/zsh-syntax-highlighting" ]]; then
+	echo -e "${BLUE}Installing plugins from local repository...${NC}"
+	rm -rf "$SYNTAX_DIR" "$SUGGEST_DIR"
+	cp -R "$SCRIPT_DIR/plugins/zsh-syntax-highlighting" "$SYNTAX_DIR"
+	cp -R "$SCRIPT_DIR/plugins/zsh-autosuggestions" "$SUGGEST_DIR"
+	echo -e "${GREEN}✓ Plugins installed from local repository.${NC}"
 else
-	echo -e "${GREEN}✓ zsh-autosuggestions already installed.${NC}"
+	echo -e "${BLUE}Downloading plugins from openhoangnc/setup-zsh repository...${NC}"
+	rm -rf "$SYNTAX_DIR" "$SUGGEST_DIR"
+	TEMP_ZIP=$(mktemp /tmp/setup-zsh.XXXXXX.zip)
+	TEMP_DIR=$(mktemp -d /tmp/setup-zsh.XXXXXX)
+	curl -L -s https://github.com/openhoangnc/setup-zsh/archive/refs/heads/main.zip -o "$TEMP_ZIP"
+	unzip -q -o "$TEMP_ZIP" -d "$TEMP_DIR"
+	
+	mv "$TEMP_DIR"/setup-zsh-main/plugins/zsh-syntax-highlighting "$SYNTAX_DIR"
+	mv "$TEMP_DIR"/setup-zsh-main/plugins/zsh-autosuggestions "$SUGGEST_DIR"
+	
+	rm -rf "$TEMP_ZIP" "$TEMP_DIR"
+	echo -e "${GREEN}✓ Plugins installed from openhoangnc/setup-zsh repository.${NC}"
 fi
 
 # 6. Backup existing ~/.zshrc if exists
@@ -101,13 +102,13 @@ autoload -Uz compinit
 compinit
 
 # 2. Syntax Highlighting
-if [[ -f ~/.setup-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]]; then
-	source ~/.setup-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+if [[ -f ~/.zsh/setup-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]]; then
+	source ~/.zsh/setup-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 fi
 
 # 3. Autosuggestions Core Setup
-if [[ -f ~/.setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
-	source ~/.setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
+	source ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 	# Customize autosuggest style (clean, beautiful gray)
 	ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=244'

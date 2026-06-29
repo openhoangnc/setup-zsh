@@ -42,5 +42,16 @@ curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/uninstall
 
 This single command will:
 1. **Safely remove the custom config block** from your `~/.zshrc` file using a clean marker detection logic, preserving any other custom aliases/scripts you had. If the file was created from scratch and is now empty, it will be deleted.
-2. **Remove the isolated plugin folder** located at `~/.setup-zsh/` (ensuring no collision with your standard `~/.zsh/` folders).
+2. **Remove the isolated plugin folder** located at `~/.zsh/setup-zsh/` (ensuring no collision with your standard plugin folders).
+
+---
+
+## License
+
+This repository is licensed under the [MIT License](LICENSE).
+
+It redistributes the following third-party plugins in the `plugins/` directory:
+- **`zsh-syntax-highlighting`**: Licensed under the [BSD 3-Clause License](plugins/zsh-syntax-highlighting/COPYING.md).
+- **`zsh-autosuggestions`**: Licensed under the [MIT License](plugins/zsh-autosuggestions/LICENSE).
+
 
