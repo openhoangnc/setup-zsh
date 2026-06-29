@@ -97,6 +97,9 @@ setopt HIST_IGNORE_SPACE
 setopt HIST_REDUCE_BLANKS
 setopt HIST_VERIFY
 
+# Auto-CD (type directory path without cd to enter)
+setopt AUTO_CD
+
 # Enable tab completion
 autoload -Uz compinit
 compinit
@@ -262,8 +265,20 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 	}
 fi
 
-# 5. Colored Prompt (Username Only, success/failure indicator)
-PROMPT='%F{147}%n%f %(?.%F{121}❯%f.%F{197}❯%f) '
+# 5. Colored Prompt (Username Only, Git status, success/failure indicator)
+autoload -Uz vcs_info
+precmd_vcs_info() { vcs_info }
+precmd_functions+=(precmd_vcs_info)
+setopt prompt_subst
+
+zstyle ':vcs_info:*' enable git
+zstyle ':vcs_info:git:*' check-for-changes true
+zstyle ':vcs_info:git:*' unstagedstr '%F{197}*%'
+zstyle ':vcs_info:git:*' stagedstr '%F{121}+%'
+zstyle ':vcs_info:git:*' formats ' %F{242}(%F{81}%b%u%c%F{242})%f'
+zstyle ':vcs_info:git:*' actionformats ' %F{242}(%F{81}%b%F{197}|%a%u%c%F{242})%f'
+
+PROMPT='%F{147}%n%f${vcs_info_msg_0_} %(?.%F{121}❯%f.%F{197}❯%f) '
 
 # 6. Colors for LS & Directories
 export CLICOLOR=1

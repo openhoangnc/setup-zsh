@@ -1,5 +1,8 @@
 # setup-zsh
 
+🌐 [English](README.md) | [Tiếng Việt](README_VI.md) | [简体中文](README_ZH.md)
+
+
 A premium, lightweight Zsh configuration script for macOS that adds syntax highlighting, colored file listings, a sleek minimal prompt, and a custom **match-any (substring) autosuggestions strategy**.
 
 Unlike standard configurations that only suggest commands starting with your typed characters, this setup matches **any substring** in your history and formats them with an elegant completion indicator (`↳`).
@@ -8,7 +11,8 @@ Unlike standard configurations that only suggest commands starting with your typ
 
 - **Match-Any Autosuggestions**: Suggestions search your entire history for any command containing your input (e.g. typing `google` matches and auto-completes `curl -I google.com`).
 - **Syntax Highlighting**: Real-time syntax check (green for valid commands, red for invalid).
-- **Sleek Username Prompt**: A modern, minimal prompt showing `username ❯` which turns pink (`username ❯`) if the last command failed.
+- **Sleek Fish-like Prompt**: A modern, minimal prompt showing `username (branch*) ❯` which displays the current Git branch and its state (clean/dirty) if inside a Git repo, and a colored arrow that turns pink if the last command failed.
+- **Auto-CD**: Jump to directories instantly by entering the directory path directly without typing the `cd` prefix.
 - **Enhanced Directory Colors**: Customized `LSCOLORS` to give files and directories a vibrant look on light/dark backgrounds.
 - **Optimized Defaults**: Enables Zsh tab completion, history appending, duplicate reductions, and increases session history to 100,000 commands.
 
