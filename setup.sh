@@ -31,8 +31,9 @@ PLUGIN_DIR="$HOME/.zsh/setup-zsh/plugins"
 echo -e "${BLUE}Creating isolated plugins directory at $PLUGIN_DIR...${NC}"
 mkdir -p "$PLUGIN_DIR"
 
-# 4. Install Plugins (Syntax Highlighting & Autosuggestions)
+# 4. Install Plugins (Syntax Highlighting, Substring Search & Autosuggestions)
 SYNTAX_DIR="$PLUGIN_DIR/zsh-syntax-highlighting"
+SUBSTRING_DIR="$PLUGIN_DIR/zsh-history-substring-search"
 SUGGEST_DIR="$PLUGIN_DIR/zsh-autosuggestions"
 
 # Determine script directory if run from local file
@@ -41,21 +42,23 @@ if [[ -n "${BASH_SOURCE[0]}" && -f "${BASH_SOURCE[0]}" ]]; then
 	SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
-if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/plugins/zsh-autosuggestions" && -d "$SCRIPT_DIR/plugins/zsh-syntax-highlighting" ]]; then
+if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/plugins/zsh-autosuggestions" && -d "$SCRIPT_DIR/plugins/zsh-syntax-highlighting" && -d "$SCRIPT_DIR/plugins/zsh-history-substring-search" ]]; then
 	echo -e "${BLUE}Installing plugins from local repository...${NC}"
-	rm -rf "$SYNTAX_DIR" "$SUGGEST_DIR"
+	rm -rf "$SYNTAX_DIR" "$SUBSTRING_DIR" "$SUGGEST_DIR"
 	cp -R "$SCRIPT_DIR/plugins/zsh-syntax-highlighting" "$SYNTAX_DIR"
+	cp -R "$SCRIPT_DIR/plugins/zsh-history-substring-search" "$SUBSTRING_DIR"
 	cp -R "$SCRIPT_DIR/plugins/zsh-autosuggestions" "$SUGGEST_DIR"
 	echo -e "${GREEN}✓ Plugins installed from local repository.${NC}"
 else
 	echo -e "${BLUE}Downloading plugins from openhoangnc/setup-zsh repository...${NC}"
-	rm -rf "$SYNTAX_DIR" "$SUGGEST_DIR"
+	rm -rf "$SYNTAX_DIR" "$SUBSTRING_DIR" "$SUGGEST_DIR"
 	TEMP_ZIP=$(mktemp /tmp/setup-zsh.XXXXXX.zip)
 	TEMP_DIR=$(mktemp -d /tmp/setup-zsh.XXXXXX)
 	curl -L -s https://github.com/openhoangnc/setup-zsh/archive/refs/heads/main.zip -o "$TEMP_ZIP"
 	unzip -q -o "$TEMP_ZIP" -d "$TEMP_DIR"
 	
 	mv "$TEMP_DIR"/setup-zsh-main/plugins/zsh-syntax-highlighting "$SYNTAX_DIR"
+	mv "$TEMP_DIR"/setup-zsh-main/plugins/zsh-history-substring-search "$SUBSTRING_DIR"
 	mv "$TEMP_DIR"/setup-zsh-main/plugins/zsh-autosuggestions "$SUGGEST_DIR"
 	
 	rm -rf "$TEMP_ZIP" "$TEMP_DIR"
@@ -109,7 +112,22 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlightin
 	source ~/.zsh/setup-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 fi
 
-# 3. Autosuggestions Core Setup
+# 3. History Substring Search (Cycle matches with Up/Down Arrows)
+if [[ -f ~/.zsh/setup-zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh ]]; then
+	source ~/.zsh/setup-zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
+
+	# Bind arrow keys for history substring search
+	bindkey '^[[A' history-substring-search-up
+	bindkey '^[[B' history-substring-search-down
+	if [[ -n "$terminfo[kcuu1]" ]]; then
+		bindkey "$terminfo[kcuu1]" history-substring-search-up
+	fi
+	if [[ -n "$terminfo[kcud1]" ]]; then
+		bindkey "$terminfo[kcud1]" history-substring-search-down
+	fi
+fi
+
+# 4. Autosuggestions Core Setup
 if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
 	source ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 
@@ -123,7 +141,7 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 	bindkey '^I' autosuggest-accept
 
 	# -------------------------------------------------------------
-	# 4. Custom Match-Any (Substring) Strategy and Widgets
+	# 5. Custom Match-Any (Substring) Strategy and Widgets
 	# -------------------------------------------------------------
 	
 	# Define custom match_any strategy (case-insensitive substring)
@@ -269,7 +287,7 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 	}
 fi
 
-# 5. Colored Prompt (Username Only, Git status, success/failure indicator)
+# 6. Colored Prompt (Username Only, Git status, success/failure indicator)
 autoload -Uz vcs_info
 precmd_vcs_info() { vcs_info }
 precmd_functions+=(precmd_vcs_info)
@@ -284,7 +302,7 @@ zstyle ':vcs_info:git:*' actionformats ' %F{242}(%F{81}%b%F{197}|%a%u%c%F{242})%
 
 PROMPT='%F{147}%n%f${vcs_info_msg_0_} %(?.%F{121}❯%f.%F{197}❯%f) '
 
-# 6. Colors for LS & Directories
+# 7. Colors for LS & Directories
 export CLICOLOR=1
 export LSCOLORS="Gxfxcxdxbxegedabagacad"
 

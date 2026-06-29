@@ -10,6 +10,7 @@ Unlike standard configurations that only suggest commands starting with your typ
 ## Features
 
 - **Match-Any Autosuggestions**: Suggestions search your entire history for any command containing your input case-insensitively (e.g. typing `GOOGLE` matches and auto-completes `curl -I google.com`).
+- **Substring History Cycling**: Type a keyword and press the **Up / Down arrow keys** to cycle through all commands in your history containing that keyword (case-insensitive).
 - **Syntax Highlighting**: Real-time syntax check (green for valid commands, red for invalid).
 - **Sleek Fish-like Prompt**: A modern, minimal prompt showing `username (branch*) ❯` which displays the current Git branch and its state (clean/dirty) if inside a Git repo, and a colored arrow that turns pink if the last command failed.
 - **Auto-CD**: Jump to directories instantly by entering the directory path directly without typing the `cd` prefix.
@@ -26,6 +27,7 @@ As you type, Zsh will automatically suggest the most recent matching command fro
 - **Substring Match**: If you type `google` (or `GOOGLE` since it's case-insensitive), it will show ` ↳ curl -I google.com`.
   - Press **`Tab`**, **`Right Arrow`**, or **`Control + F`** to accept the full suggestion.
   - Press **`Option + Right Arrow`** (or `Alt + F`) to accept the suggestion **word-by-word**.
+- **Cycle through multiple matches**: If the suggested command isn't the one you wanted, press the **Up Arrow** key to replace the line with the latest match, and continue pressing **Up/Down Arrows** to cycle through all matching commands in your history.
 
 ### 2. Auto-CD
 To navigate directories faster, simply type any directory path and press `Enter`:
