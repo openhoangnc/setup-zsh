@@ -275,5 +275,13 @@ zstyle ':completion:*' menu select
 EOF
 
 echo -e "${GREEN}✓ ~/.zshrc updated successfully!${NC}"
-echo -e "${BLUE}=== Zsh Setup Complete ===${NC}"
-echo -e "Please run: ${GREEN}source ~/.zshrc${NC} to apply the changes to your current terminal session."
+
+# Source the zshrc if we are currently running inside an active Zsh shell script execution
+if [ -n "$ZSH_VERSION" ]; then
+	echo -e "${BLUE}Sourcing ~/.zshrc...${NC}"
+	source "$ZSHRC"
+	echo -e "${GREEN}✓ Applied changes to current session.${NC}"
+else
+	echo -e "${BLUE}=== Zsh Setup Complete ===${NC}"
+	echo -e "To apply the changes immediately, please run: ${GREEN}source ~/.zshrc${NC} or restart your terminal."
+fi
