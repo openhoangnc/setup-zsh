@@ -119,16 +119,19 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 	# Configure strategies (try match_any first, fallback to completion)
 	ZSH_AUTOSUGGEST_STRATEGY=(match_any completion)
 
+	# Bind Tab key (^I) to accept autosuggestion if present, otherwise do tab-completion
+	bindkey '^I' autosuggest-accept
+
 	# -------------------------------------------------------------
 	# 4. Custom Match-Any (Substring) Strategy and Widgets
 	# -------------------------------------------------------------
 	
-	# Define custom match_any strategy
+	# Define custom match_any strategy (case-insensitive substring)
 	_zsh_autosuggest_strategy_match_any() {
 		emulate -L zsh
 		setopt EXTENDED_GLOB
 		local prefix="${1//(#m)[\\*?[\]<>()|^~#]/\\$MATCH}"
-		local pattern="*$prefix*"
+		local pattern="(#i)*$prefix*"
 		if [[ -n $ZSH_AUTOSUGGEST_HISTORY_IGNORE ]]; then
 			pattern="($pattern)~($ZSH_AUTOSUGGEST_HISTORY_IGNORE)"
 		fi
@@ -148,8 +151,8 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 			_zsh_autosuggest_strategy_$strategy "$1"
 
 			if [[ "$strategy" == "match_any" ]]; then
-				# For match_any, check that the suggestion contains the buffer
-				[[ "$suggestion" != *"$1"* ]] && unset suggestion
+				# For match_any, check that the suggestion contains the buffer case-insensitively
+				[[ "${suggestion:l}" != *"${1:l}"* ]] && unset suggestion
 			else
 				# Standard prefix match requirement
 				[[ "$suggestion" != "$1"* ]] && unset suggestion
@@ -166,9 +169,9 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 		typeset -g _ZSH_AUTOSUGGEST_CURRENT_SUGGESTION="$suggestion"
 
 		if [[ -n "$suggestion" ]] && (( $#BUFFER )); then
-			if [[ "$suggestion" == "$BUFFER"* ]]; then
-				# Standard prefix match display
-				POSTDISPLAY="${suggestion#$BUFFER}"
+			if [[ "${suggestion:l}" == "${BUFFER:l}"* ]]; then
+				# Case-insensitive prefix match display
+				POSTDISPLAY="${suggestion#${suggestion[1,$#BUFFER]}}"
 			else
 				# Substring match display (add subtle indicator)
 				POSTDISPLAY=" ↳ $suggestion"
@@ -230,7 +233,8 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 		local original_buffer="$BUFFER"
 
 		if [[ "$POSTDISPLAY" == " ↳ "* ]]; then
-			local idx=${_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION[(i)$BUFFER]}
+			# Case-insensitive index search
+			local idx=${${_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION:l}[(i)${BUFFER:l}]}
 			if (( idx <= $#_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION )); then
 				BUFFER="$_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION"
 				CURSOR=$((idx + $#original_buffer - 1))

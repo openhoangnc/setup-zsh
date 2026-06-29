@@ -9,12 +9,35 @@ Unlike standard configurations that only suggest commands starting with your typ
 
 ## Features
 
-- **Match-Any Autosuggestions**: Suggestions search your entire history for any command containing your input (e.g. typing `google` matches and auto-completes `curl -I google.com`).
+- **Match-Any Autosuggestions**: Suggestions search your entire history for any command containing your input case-insensitively (e.g. typing `GOOGLE` matches and auto-completes `curl -I google.com`).
 - **Syntax Highlighting**: Real-time syntax check (green for valid commands, red for invalid).
 - **Sleek Fish-like Prompt**: A modern, minimal prompt showing `username (branch*) ❯` which displays the current Git branch and its state (clean/dirty) if inside a Git repo, and a colored arrow that turns pink if the last command failed.
 - **Auto-CD**: Jump to directories instantly by entering the directory path directly without typing the `cd` prefix.
 - **Enhanced Directory Colors**: Customized `LSCOLORS` to give files and directories a vibrant look on light/dark backgrounds.
 - **Optimized Defaults**: Enables Zsh tab completion, history appending, duplicate reductions, and increases session history to 100,000 commands.
+
+---
+
+## Usage Guide
+
+### 1. Match-Any Autosuggestions
+As you type, Zsh will automatically suggest the most recent matching command from your history.
+- **Prefix Match**: If you type `curl`, it suggests ` -I google.com` in faint gray. Press `Tab` or `Right Arrow` to accept.
+- **Substring Match**: If you type `google` (or `GOOGLE` since it's case-insensitive), it will show ` ↳ curl -I google.com`.
+  - Press **`Tab`**, **`Right Arrow`**, or **`Control + F`** to accept the full suggestion.
+  - Press **`Option + Right Arrow`** (or `Alt + F`) to accept the suggestion **word-by-word**.
+
+### 2. Auto-CD
+To navigate directories faster, simply type any directory path and press `Enter`:
+```bash
+~/Downloads  # Automatically runs cd ~/Downloads
+..           # Automatically runs cd ..
+```
+
+### 3. Fish-Style Prompt
+- The prompt shows `username (branch*) ❯ `.
+- If a Git branch has unstaged changes, a pink `*` is shown. If there are staged changes, a green `+` is shown.
+- The arrow `❯` turns pink if the last command returned a non-zero exit code (failed).
 
 ---
 
