@@ -4,7 +4,7 @@
 
 Bộ cấu hình Zsh nhẹ cho macOS. Thêm highlight cú pháp, tô màu danh sách file, prompt đẹp, và **gợi ý lệnh thông minh khớp bất kỳ phần nào trong lịch sử**.
 
-Các cấu hình Zsh thông thường chỉ gợi ý lệnh *bắt đầu bằng* ký tự bạn gõ. Bộ cấu hình này tìm kiếm *toàn bộ* lịch sử và hiển thị kết quả kèm mũi tên `↳`.
+Các cấu hình Zsh thông thường chỉ gợi ý lệnh *bắt đầu bằng* ký tự bạn gõ. Bộ cấu hình này tìm kiếm *toàn bộ* lịch sử và hiển thị kết quả kèm mũi tên `»`.
 
 ## Bạn sẽ có gì
 
@@ -26,7 +26,7 @@ Các cấu hình Zsh thông thường chỉ gợi ý lệnh *bắt đầu bằng
 Khi bạn gõ, Zsh tự động hiện gợi ý mờ từ lịch sử lệnh.
 
 - **Khớp đầu câu**: Gõ `curl` → thấy ` -I google.com` màu xám. Nhấn `Tab` hoặc `→` để chấp nhận.
-- **Khớp ở giữa**: Gõ `google` → thấy `↳ curl -I google.com`.
+- **Khớp ở giữa**: Gõ `google` → thấy `» curl -I google.com`.
   - Nhấn **`Tab`**, **`→`**, hoặc **`Ctrl+F`** để chấp nhận toàn bộ.
   - Nhấn **`Option+→`** (hoặc `Alt+F`) để chấp nhận từng từ.
 - **Xem thêm kết quả**: Nhấn **Mũi tên Lên** để thay bằng kết quả khác, tiếp tục nhấn **Lên / Xuống** để duyệt hết.

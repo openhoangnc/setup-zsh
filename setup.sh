@@ -206,7 +206,7 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 				POSTDISPLAY="${suggestion#${suggestion[1,$#BUFFER]}}"
 			else
 				# Substring match display (add subtle indicator)
-				POSTDISPLAY=" ↳ $suggestion"
+				POSTDISPLAY=" » $suggestion"
 			fi
 		else
 			POSTDISPLAY=
@@ -226,7 +226,7 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 			return
 		fi
 
-		if [[ "$POSTDISPLAY" == " ↳ "* ]]; then
+		if [[ "$POSTDISPLAY" == " » "* ]]; then
 			BUFFER="$_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION"
 		else
 			BUFFER="$BUFFER$POSTDISPLAY"
@@ -248,7 +248,7 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 
 	# Override execute function (accept and run, e.g. Ctrl+F / Right Arrow)
 	_zsh_autosuggest_execute() {
-		if [[ "$POSTDISPLAY" == " ↳ "* ]]; then
+		if [[ "$POSTDISPLAY" == " » "* ]]; then
 			BUFFER="$_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION"
 		else
 			BUFFER="$BUFFER$POSTDISPLAY"
@@ -264,7 +264,7 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 		local -i retval cursor_loc
 		local original_buffer="$BUFFER"
 
-		if [[ "$POSTDISPLAY" == " ↳ "* ]]; then
+		if [[ "$POSTDISPLAY" == " » "* ]]; then
 			# Case-insensitive index search
 			local idx=${${_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION:l}[(i)${BUFFER:l}]}
 			if (( idx <= $#_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION )); then
@@ -286,7 +286,7 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 		fi
 
 		local boundary=$#original_buffer
-		if [[ "$POSTDISPLAY" == " ↳ "* ]]; then
+		if [[ "$POSTDISPLAY" == " » "* ]]; then
 			boundary=$((idx + $#original_buffer - 1))
 		fi
 

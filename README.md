@@ -4,7 +4,7 @@
 
 A lightweight Zsh setup for macOS. It gives you syntax highlighting, colorful file listings, a clean prompt, and **smart autosuggestions that match any part of your command history**.
 
-Most Zsh setups only suggest commands that *start with* what you type. This one searches your *entire* history for any match and shows it with a `↳` arrow.
+Most Zsh setups only suggest commands that *start with* what you type. This one searches your *entire* history for any match and shows it with a `»` arrow.
 
 ## What You Get
 
@@ -26,7 +26,7 @@ Most Zsh setups only suggest commands that *start with* what you type. This one 
 As you type, Zsh shows a faded suggestion from your history.
 
 - **Starts with your text**: Type `curl` → see ` -I google.com` in gray. Press `Tab` or `→` to accept.
-- **Contains your text**: Type `google` → see `↳ curl -I google.com`.
+- **Contains your text**: Type `google` → see `» curl -I google.com`.
   - Press **`Tab`**, **`→`**, or **`Ctrl+F`** to accept the whole suggestion.
   - Press **`Option+→`** (or `Alt+F`) to accept one word at a time.
 - **Browse more matches**: Press **Up Arrow** to replace the line with another match, then keep pressing **Up / Down** to cycle through all matches.
