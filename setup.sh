@@ -48,6 +48,13 @@ if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/plugins/zsh-autosuggestions" && -d "$S
 	cp -R "$SCRIPT_DIR/plugins/zsh-syntax-highlighting" "$SYNTAX_DIR"
 	cp -R "$SCRIPT_DIR/plugins/zsh-history-substring-search" "$SUBSTRING_DIR"
 	cp -R "$SCRIPT_DIR/plugins/zsh-autosuggestions" "$SUGGEST_DIR"
+	
+	if [[ -d "$SCRIPT_DIR/bin" ]]; then
+		echo -e "${BLUE}Installing bin directory from local repository...${NC}"
+		mkdir -p "$HOME/.zsh/setup-zsh/bin"
+		cp -R "$SCRIPT_DIR/bin/"* "$HOME/.zsh/setup-zsh/bin/"
+		chmod +x "$HOME/.zsh/setup-zsh/bin/"*
+	fi
 	echo -e "${GREEN}✓ Plugins installed from local repository.${NC}"
 else
 	echo -e "${BLUE}Downloading plugins from openhoangnc/setup-zsh repository...${NC}"
@@ -60,6 +67,13 @@ else
 	mv "$TEMP_DIR"/setup-zsh-main/plugins/zsh-syntax-highlighting "$SYNTAX_DIR"
 	mv "$TEMP_DIR"/setup-zsh-main/plugins/zsh-history-substring-search "$SUBSTRING_DIR"
 	mv "$TEMP_DIR"/setup-zsh-main/plugins/zsh-autosuggestions "$SUGGEST_DIR"
+	
+	if [[ -d "$TEMP_DIR/setup-zsh-main/bin" ]]; then
+		echo -e "${BLUE}Installing bin directory from openhoangnc/setup-zsh repository...${NC}"
+		mkdir -p "$HOME/.zsh/setup-zsh/bin"
+		cp -R "$TEMP_DIR/setup-zsh-main/bin/"* "$HOME/.zsh/setup-zsh/bin/"
+		chmod +x "$HOME/.zsh/setup-zsh/bin/"*
+	fi
 	
 	rm -rf "$TEMP_ZIP" "$TEMP_DIR"
 	echo -e "${GREEN}✓ Plugins installed from openhoangnc/setup-zsh repository.${NC}"
@@ -295,8 +309,8 @@ setopt prompt_subst
 
 zstyle ':vcs_info:*' enable git
 zstyle ':vcs_info:git:*' check-for-changes true
-zstyle ':vcs_info:git:*' unstagedstr '%F{197}*%'
-zstyle ':vcs_info:git:*' stagedstr '%F{121}+%'
+zstyle ':vcs_info:git:*' unstagedstr '%F{197}*%f'
+zstyle ':vcs_info:git:*' stagedstr '%F{121}+%f'
 zstyle ':vcs_info:git:*' formats ' %F{242}(%F{81}%b%u%c%F{242})%f'
 zstyle ':vcs_info:git:*' actionformats ' %F{242}(%F{81}%b%F{197}|%a%u%c%F{242})%f'
 
@@ -308,6 +322,14 @@ export LSCOLORS="Gxfxcxdxbxegedabagacad"
 
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*' menu select
+
+# 8. Custom Bin & Environment
+if [[ -d "$HOME/.zsh/setup-zsh/bin" ]]; then
+	export PATH="$HOME/.zsh/setup-zsh/bin:$PATH"
+fi
+if [[ -f "$HOME/.zsh/setup-zsh/env.zsh" ]]; then
+	source "$HOME/.zsh/setup-zsh/env.zsh"
+fi
 # <<< setup-zsh <<<
 EOF
 

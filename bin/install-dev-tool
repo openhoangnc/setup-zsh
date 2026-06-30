@@ -1,0 +1,689 @@
+#!/bin/bash
+
+# setup-zsh Developer Tool Installer
+# Installs and updates Go, Node.js, OrbStack, VSCode, Python, Claude, and Rust on macOS.
+
+# ANSI color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Detect architecture
+ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ]; then
+    GO_ARCH="amd64"
+    NODE_ARCH="x64"
+    ORB_ARCH="amd64"
+else
+    GO_ARCH="arm64"
+    NODE_ARCH="arm64"
+    ORB_ARCH="arm64"
+fi
+
+TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
+
+# Launch parallel version checks in the background
+(
+    LATEST=$(curl -s 'https://go.dev/VERSION?m=text' | head -n1 | sed 's/^go//' || echo "Unknown")
+    echo "$LATEST" > "$TEMP_VER_DIR/go"
+) &
+
+(
+    LATEST=$(curl -s https://nodejs.org/dist/index.tab | awk 'NR>1 && $10 != "-" {print $1; exit}' | sed 's/^v//' || echo "Unknown")
+    echo "$LATEST" > "$TEMP_VER_DIR/node_lts"
+) &
+
+(
+    LATEST=$(curl -s https://nodejs.org/dist/index.tab | awk 'NR==2 {print $1}' | sed 's/^v//' || echo "Unknown")
+    echo "$LATEST" > "$TEMP_VER_DIR/node_curr"
+) &
+
+(
+    LATEST=$(curl -s "https://cdn-updates.orbstack.dev/${ORB_ARCH}/appcast.new.xml" | grep -o '<sparkle:shortVersionString>[^<]*' | head -n 1 | sed 's/<sparkle:shortVersionString>//' || echo "Unknown")
+    echo "$LATEST" > "$TEMP_VER_DIR/orb"
+) &
+
+(
+    LATEST=$(curl -s "https://update.code.visualstudio.com/api/update/darwin-universal/stable/latest" | grep -o '"name":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
+    echo "$LATEST" > "$TEMP_VER_DIR/vscode"
+) &
+
+(
+    LATEST=$(curl -s -L --compressed https://www.python.org/downloads/macos/ | grep -o 'https://www.python.org/ftp/python/[0-9.]*/python-[0-9.]*-macos11.pkg' | sort -V | tail -n 1 | cut -d/ -f6 || echo "Unknown")
+    echo "$LATEST" > "$TEMP_VER_DIR/python"
+) &
+
+(
+    LATEST=$(curl -s https://downloads.claude.ai/releases/darwin/universal/RELEASES.json | grep -o '"currentRelease":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
+    echo "$LATEST" > "$TEMP_VER_DIR/claude"
+) &
+
+(
+    LATEST=$(curl -s https://static.rust-lang.org/dist/channel-rust-stable.toml | grep -A 2 '\[pkg.rust\]' | grep 'version =' | cut -d'"' -f2 | cut -d' ' -f1 || echo "Unknown")
+    echo "$LATEST" > "$TEMP_VER_DIR/rust"
+) &
+
+# Spinner loading indicator
+show_spinner() {
+    local delay=0.1
+    local spinstr='|/-\'
+    echo -n -e " ${CYAN}Checking for the latest updates...${NC} "
+    while [[ -n $(jobs -r 2>/dev/null) ]]; do
+        local temp=${spinstr#?}
+        printf "[%c]" "$spinstr"
+        spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b"
+    done
+    printf "   \b\b\b\n"
+}
+
+# Wait for all background tasks to finish
+show_spinner
+wait
+
+# Read latest versions
+LATEST_GO=$(cat "$TEMP_VER_DIR/go" 2>/dev/null || echo "Unknown")
+LATEST_NODE_LTS=$(cat "$TEMP_VER_DIR/node_lts" 2>/dev/null || echo "Unknown")
+LATEST_NODE_CURR=$(cat "$TEMP_VER_DIR/node_curr" 2>/dev/null || echo "Unknown")
+LATEST_ORB=$(cat "$TEMP_VER_DIR/orb" 2>/dev/null || echo "Unknown")
+LATEST_VSCODE=$(cat "$TEMP_VER_DIR/vscode" 2>/dev/null || echo "Unknown")
+LATEST_PYTHON=$(cat "$TEMP_VER_DIR/python" 2>/dev/null || echo "Unknown")
+LATEST_CLAUDE=$(cat "$TEMP_VER_DIR/claude" 2>/dev/null || echo "Unknown")
+LATEST_RUST=$(cat "$TEMP_VER_DIR/rust" 2>/dev/null || echo "Unknown")
+rm -rf "$TEMP_VER_DIR"
+
+# Detection helper functions
+detect_go() {
+    if [[ -x "$HOME/.local/go/bin/go" ]]; then
+        echo "$("$HOME/.local/go/bin/go" version | awk '{print $3}' | sed 's/^go//')"
+    fi
+}
+
+detect_node() {
+    if [[ -x "$HOME/.local/node/bin/node" ]]; then
+        echo "$("$HOME/.local/node/bin/node" -v | sed 's/^v//')"
+    fi
+}
+
+detect_orb() {
+    if [[ -d "/Applications/OrbStack.app" ]]; then
+        defaults read "/Applications/OrbStack.app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo ""
+    fi
+}
+
+detect_vscode() {
+    if [[ -d "/Applications/Visual Studio Code.app" ]]; then
+        defaults read "/Applications/Visual Studio Code.app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo ""
+    fi
+}
+
+detect_python() {
+    if command -v python3 &>/dev/null; then
+        python3 --version 2>&1 | awk '{print $2}' || echo ""
+    fi
+}
+
+detect_claude() {
+    if [[ -d "/Applications/Claude.app" ]]; then
+        defaults read "/Applications/Claude.app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo ""
+    fi
+}
+
+detect_rust() {
+    if [[ -x "$HOME/.cargo/bin/rustc" ]]; then
+        "$HOME/.cargo/bin/rustc" --version | awk '{print $2}' || echo ""
+    fi
+}
+
+format_status() {
+    local installed="$1"
+    local latest="$2"
+    if [[ -z "$installed" ]]; then
+        echo -e "${RED}[Not Installed]${NC}"
+    elif [[ "$installed" == "$latest" ]]; then
+        echo -e "${GREEN}[Installed: v$installed (Latest)]${NC}"
+    else
+        echo -e "${YELLOW}[Installed: v$installed -> Upgrade to v$latest]${NC}"
+    fi
+}
+
+show_checkbox() {
+    local val="$1"
+    if [ "$val" -eq 1 ]; then
+        echo -e "[${GREEN}✓${NC}]"
+    else
+        echo -e "[ ]"
+    fi
+}
+
+show_line() {
+    local line_num="$1"
+    local content="$2"
+    if [ "$CURSOR" -eq "$line_num" ]; then
+        echo -e "${CYAN}❯${NC} $content"
+    else
+        echo -e "  $content"
+    fi
+}
+
+update_env_block() {
+    local marker="$1"
+    local content="$2"
+    local env_file="$HOME/.zsh/setup-zsh/env.zsh"
+    
+    mkdir -p "$(dirname "$env_file")"
+    touch "$env_file"
+    
+    local temp_file
+    temp_file=$(mktemp /tmp/env_zsh.XXXXXX)
+    awk -v start="# >>> ${marker} >>>" -v end="# <<< ${marker} <<<" '
+        $0 == start {p=1; next}
+        $0 == end {p=0; next}
+        !p
+    ' "$env_file" > "$temp_file"
+    
+    if [[ -n "$content" ]]; then
+        echo -e "# >>> ${marker} >>>\n${content}\n# <<< ${marker} <<<" >> "$temp_file"
+    fi
+    
+    mv "$temp_file" "$env_file"
+}
+
+confirm_reinstall() {
+    local name="$1"
+    local version="$2"
+    echo -n -e "${YELLOW}${name} is already up-to-date (v${version}). Re-install? (y/N): ${NC}"
+    read -r response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+install_go() {
+    echo -e "${BLUE}Installing Go v${LATEST_GO}...${NC}"
+    local download_url="https://dl.google.com/go/go${LATEST_GO}.darwin-${GO_ARCH}.tar.gz"
+    local temp_tar=$(mktemp /tmp/go.XXXXXX.tar.gz)
+    
+    echo "Downloading ${download_url}..."
+    if ! curl -L --progress-bar "$download_url" -o "$temp_tar"; then
+        echo -e "${RED}Error: Failed to download Go.${NC}"
+        return 1
+    fi
+    
+    echo "Extracting to ~/.local/go..."
+    mkdir -p "$HOME/.local"
+    rm -rf "$HOME/.local/go"
+    if ! tar -xzf "$temp_tar" -C "$HOME/.local"; then
+        echo -e "${RED}Error: Failed to extract Go.${NC}"
+        rm -f "$temp_tar"
+        return 1
+    fi
+    
+    rm -f "$temp_tar"
+    
+    echo "Updating env.zsh..."
+    local content="export GOROOT=\"\$HOME/.local/go\"\nexport GOPATH=\"\$HOME/go\"\nexport PATH=\"\$GOROOT/bin:\$GOPATH/bin:\$PATH\""
+    update_env_block "Go" "$content"
+    
+    echo -e "${GREEN}✓ Go v${LATEST_GO} installed successfully!${NC}"
+}
+
+install_node() {
+    local version="$1"
+    echo -e "${BLUE}Installing Node.js v${version}...${NC}"
+    local download_url="https://nodejs.org/dist/v${version}/node-v${version}-darwin-${NODE_ARCH}.tar.gz"
+    local temp_tar=$(mktemp /tmp/node.XXXXXX.tar.gz)
+    
+    echo "Downloading ${download_url}..."
+    if ! curl -L --progress-bar "$download_url" -o "$temp_tar"; then
+        echo -e "${RED}Error: Failed to download Node.js.${NC}"
+        return 1
+    fi
+    
+    echo "Extracting to ~/.local/node..."
+    mkdir -p "$HOME/.local"
+    rm -rf "$HOME/.local/node"
+    local temp_extract_dir
+    temp_extract_dir=$(mktemp -d /tmp/node_extract.XXXXXX)
+    if ! tar -xzf "$temp_tar" -C "$temp_extract_dir"; then
+        echo -e "${RED}Error: Failed to extract Node.js.${NC}"
+        rm -f "$temp_tar"
+        rm -rf "$temp_extract_dir"
+        return 1
+    fi
+    
+    mv "$temp_extract_dir"/node-v${version}-darwin-${NODE_ARCH} "$HOME/.local/node"
+    
+    rm -f "$temp_tar"
+    rm -rf "$temp_extract_dir"
+    
+    echo "Updating env.zsh..."
+    local content="export PATH=\"\$HOME/.local/node/bin:\$PATH\""
+    update_env_block "Node" "$content"
+    
+    echo -e "${GREEN}✓ Node.js v${version} installed successfully!${NC}"
+    echo -e "${YELLOW}Note: Global npm packages will be installed under ~/.local/node without requiring sudo!${NC}"
+}
+
+install_orb() {
+    echo -e "${BLUE}Installing OrbStack v${LATEST_ORB}...${NC}"
+    local download_url
+    download_url=$(curl -s "https://cdn-updates.orbstack.dev/${ORB_ARCH}/appcast.new.xml" | grep -o 'enclosure url="[^"]*"' | head -n 1 | cut -d'"' -f2 || echo "")
+    if [[ -z "$download_url" ]]; then
+        echo -e "${RED}Error: Failed to resolve OrbStack download URL.${NC}"
+        return 1
+    fi
+    
+    local temp_dmg=$(mktemp /tmp/orbstack.XXXXXX.dmg)
+    
+    echo "Downloading ${download_url}..."
+    if ! curl -L --progress-bar "$download_url" -o "$temp_dmg"; then
+        echo -e "${RED}Error: Failed to download OrbStack.${NC}"
+        return 1
+    fi
+    
+    echo "Mounting DMG..."
+    local mount_point="/Volumes/OrbStack_temp_$$"
+    mkdir -p "$mount_point"
+    if ! hdiutil attach -nobrowse -readonly -mountpoint "$mount_point" "$temp_dmg"; then
+        echo -e "${RED}Error: Failed to mount OrbStack DMG.${NC}"
+        rm -f "$temp_dmg"
+        rm -rf "$mount_point"
+        return 1
+    fi
+    
+    echo "Copying to Applications..."
+    rm -rf "/Applications/OrbStack.app"
+    if ! cp -R "${mount_point}/OrbStack.app" "/Applications/"; then
+        echo -e "${RED}Error: Failed to copy OrbStack to /Applications.${NC}"
+        hdiutil detach "$mount_point"
+        rm -f "$temp_dmg"
+        rm -rf "$mount_point"
+        return 1
+    fi
+    
+    echo "Unmounting DMG..."
+    hdiutil detach "$mount_point"
+    rm -rf "$mount_point"
+    rm -f "$temp_dmg"
+    
+    echo "Updating env.zsh..."
+    local content="if [[ -d \"/Applications/OrbStack.app/Contents/MacOS/bin\" ]]; then\n  export PATH=\"/Applications/OrbStack.app/Contents/MacOS/bin:\$PATH\"\nfi"
+    update_env_block "OrbStack" "$content"
+    
+    echo -e "${GREEN}✓ OrbStack v${LATEST_ORB} installed to /Applications/OrbStack.app!${NC}"
+    echo -e "${YELLOW}Please launch OrbStack to complete system setup: open -a OrbStack${NC}"
+}
+
+install_vscode() {
+    echo -e "${BLUE}Installing VSCode v${LATEST_VSCODE}...${NC}"
+    local download_url="https://update.code.visualstudio.com/latest/darwin-universal/stable"
+    local temp_zip=$(mktemp /tmp/vscode.XXXXXX.zip)
+    
+    echo "Downloading ${download_url}..."
+    if ! curl -L --progress-bar "$download_url" -o "$temp_zip"; then
+        echo -e "${RED}Error: Failed to download VSCode.${NC}"
+        return 1
+    fi
+    
+    echo "Extracting..."
+    local temp_extract_dir
+    temp_extract_dir=$(mktemp -d /tmp/vscode_extract.XXXXXX)
+    if ! unzip -q "$temp_zip" -d "$temp_extract_dir"; then
+        echo -e "${RED}Error: Failed to extract VSCode.${NC}"
+        rm -f "$temp_zip"
+        rm -rf "$temp_extract_dir"
+        return 1
+    fi
+    
+    echo "Moving to Applications..."
+    rm -rf "/Applications/Visual Studio Code.app"
+    if ! cp -R "$temp_extract_dir/Visual Studio Code.app" "/Applications/"; then
+        echo -e "${RED}Error: Failed to copy VSCode to /Applications.${NC}"
+        rm -f "$temp_zip"
+        rm -rf "$temp_extract_dir"
+        return 1
+    fi
+    
+    rm -f "$temp_zip"
+    rm -rf "$temp_extract_dir"
+    
+    echo "Updating env.zsh..."
+    local content="export PATH=\"/Applications/Visual Studio Code.app/Contents/Resources/app/bin:\$PATH\""
+    update_env_block "VSCode" "$content"
+    
+    echo -e "${GREEN}✓ VSCode v${LATEST_VSCODE} installed to /Applications/Visual Studio Code.app!${NC}"
+}
+
+install_python() {
+    echo -e "${BLUE}Installing Python v${LATEST_PYTHON}...${NC}"
+    local download_url="https://www.python.org/ftp/python/${LATEST_PYTHON}/python-${LATEST_PYTHON}-macos11.pkg"
+    local temp_pkg=$(mktemp /tmp/python.XXXXXX.pkg)
+    
+    echo "Downloading ${download_url}..."
+    if ! curl -L --progress-bar "$download_url" -o "$temp_pkg"; then
+        echo -e "${RED}Error: Failed to download Python.${NC}"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}This installation requires administrator privileges. Please enter your password when prompted.${NC}"
+    if ! sudo installer -pkg "$temp_pkg" -target /; then
+        echo -e "${RED}Error: Failed to install Python pkg.${NC}"
+        rm -f "$temp_pkg"
+        return 1
+    fi
+    
+    rm -f "$temp_pkg"
+    
+    echo "Updating env.zsh..."
+    local content="alias python=\"python3\"\nalias pip=\"pip3\""
+    update_env_block "Python" "$content"
+    
+    echo -e "${GREEN}✓ Python v${LATEST_PYTHON} installed successfully!${NC}"
+}
+
+install_claude() {
+    echo -e "${BLUE}Installing Claude v${LATEST_CLAUDE}...${NC}"
+    local download_url
+    download_url=$(curl -s https://downloads.claude.ai/releases/darwin/universal/RELEASES.json | grep -o 'https://downloads.claude.ai/releases/darwin/universal/[^"]*' | head -n 1 || echo "")
+    if [[ -z "$download_url" ]]; then
+        echo -e "${RED}Error: Failed to resolve Claude download URL.${NC}"
+        return 1
+    fi
+    
+    local temp_zip=$(mktemp /tmp/claude.XXXXXX.zip)
+    
+    echo "Downloading ${download_url}..."
+    if ! curl -L --progress-bar "$download_url" -o "$temp_zip"; then
+        echo -e "${RED}Error: Failed to download Claude.${NC}"
+        return 1
+    fi
+    
+    echo "Extracting..."
+    local temp_extract_dir
+    temp_extract_dir=$(mktemp -d /tmp/claude_extract.XXXXXX)
+    if ! unzip -q "$temp_zip" -d "$temp_extract_dir"; then
+        echo -e "${RED}Error: Failed to extract Claude.${NC}"
+        rm -f "$temp_zip"
+        rm -rf "$temp_extract_dir"
+        return 1
+    fi
+    
+    echo "Moving to Applications..."
+    rm -rf "/Applications/Claude.app"
+    if ! cp -R "$temp_extract_dir/Claude.app" "/Applications/"; then
+        echo -e "${RED}Error: Failed to copy Claude to /Applications.${NC}"
+        rm -f "$temp_zip"
+        rm -rf "$temp_extract_dir"
+        return 1
+    fi
+    
+    rm -f "$temp_zip"
+    rm -rf "$temp_extract_dir"
+    
+    echo -e "${GREEN}✓ Claude v${LATEST_CLAUDE} installed to /Applications/Claude.app!${NC}"
+}
+
+install_rust() {
+    echo -e "${BLUE}Installing/Upgrading Rust v${LATEST_RUST}...${NC}"
+    
+    if [[ -x "$HOME/.cargo/bin/rustup" ]]; then
+        echo "Updating Rust via rustup..."
+        if ! "$HOME/.cargo/bin/rustup" update; then
+            echo -e "${RED}Error: Failed to update Rust.${NC}"
+            return 1
+        fi
+    else
+        echo "Running official rustup installer..."
+        if ! curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path; then
+            echo -e "${RED}Error: Failed to install Rust via rustup.${NC}"
+            return 1
+        fi
+    fi
+    
+    echo "Updating env.zsh..."
+    local content="export PATH=\"\$HOME/.cargo/bin:\$PATH\""
+    update_env_block "Rust" "$content"
+    
+    echo -e "${GREEN}✓ Rust v${LATEST_RUST} installed successfully!${NC}"
+}
+
+# Selection states (0 = unselected, 1 = selected)
+SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0
+CURSOR=1
+do_install=0
+
+toggle_all() {
+    local any_unselected=0
+    for i in {1..8}; do
+        eval "local val=\$SEL_$i"
+        if [ "$val" -eq 0 ]; then
+            any_unselected=1
+            break
+        fi
+    done
+    
+    for i in {1..8}; do
+        if [ "$any_unselected" -eq 1 ]; then
+            eval "SEL_$i=1"
+        else
+            eval "SEL_$i=0"
+        fi
+    done
+}
+
+# Main loop
+while true; do
+    INST_GO=$(detect_go)
+    INST_NODE=$(detect_node)
+    INST_ORB=$(detect_orb)
+    INST_VSCODE=$(detect_vscode)
+    INST_PYTHON=$(detect_python)
+    INST_CLAUDE=$(detect_claude)
+    INST_RUST=$(detect_rust)
+    
+    if [[ -n "$TERM" ]]; then
+        clear
+    fi
+    echo -e "${BLUE}==================================================${NC}"
+    echo -e "${BLUE}        🛠️  setup-zsh Developer Tool Installer${NC}"
+    echo -e "${BLUE}==================================================${NC}"
+    echo -e "Use Up/Down arrows to navigate, Space/Enter to toggle selections.\n"
+    
+    show_line 1 "$(show_checkbox "$SEL_1") 1) 🐹 Go (Golang)      $(format_status "$INST_GO" "$LATEST_GO")"
+    show_line 2 "$(show_checkbox "$SEL_2") 2) 🟢 Node.js (LTS)    $(format_status "$INST_NODE" "$LATEST_NODE_LTS")"
+    show_line 3 "$(show_checkbox "$SEL_3") 3) 🟢 Node.js (Current)$(format_status "$INST_NODE" "$LATEST_NODE_CURR")"
+    show_line 4 "$(show_checkbox "$SEL_4") 4) 🐳 OrbStack         $(format_status "$INST_ORB" "$LATEST_ORB")"
+    show_line 5 "$(show_checkbox "$SEL_5") 5) 🟦 VSCode           $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
+    show_line 6 "$(show_checkbox "$SEL_6") 6) 🐍 Python           $(format_status "$INST_PYTHON" "$LATEST_PYTHON")"
+    show_line 7 "$(show_checkbox "$SEL_7") 7) 💬 Claude           $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
+    show_line 8 "$(show_checkbox "$SEL_8") 8) 🦀 Rust             $(format_status "$INST_RUST" "$LATEST_RUST")"
+    echo ""
+    show_line 9 "[I] Install Selected Tools"
+    show_line 10 "[A] Toggle All"
+    show_line 11 "[E] Exit"
+    echo -e "${BLUE}==================================================${NC}"
+    
+    # Read one character (escape sequences check)
+    IFS= read -r -s -n 1 key 2>/dev/null
+    action=""
+    
+    if [[ "$key" = $'\e' ]]; then
+        read -r -s -n 2 -t 1 next_chars 2>/dev/null
+        if [[ "$next_chars" = "[A" || "$next_chars" = "OA" ]]; then
+            action="UP"
+        elif [[ "$next_chars" = "[B" || "$next_chars" = "OB" ]]; then
+            action="DOWN"
+        fi
+    elif [[ "$key" = " " ]]; then
+        action="SPACE"
+    elif [[ -z "$key" ]]; then
+        action="ENTER"
+    elif [[ "$key" = "i" || "$key" = "I" ]]; then
+        action="INSTALL"
+    elif [[ "$key" = "a" || "$key" = "A" ]]; then
+        action="ALL"
+    elif [[ "$key" = "e" || "$key" = "E" || "$key" = "q" || "$key" = "Q" ]]; then
+        action="EXIT"
+    elif [[ "$key" =~ ^[1-8]$ ]]; then
+        action="NUM_$key"
+    fi
+    
+    case "$action" in
+        UP)
+            CURSOR=$((CURSOR - 1))
+            if [ "$CURSOR" -lt 1 ]; then
+                CURSOR=11
+            fi
+            ;;
+        DOWN)
+            CURSOR=$((CURSOR + 1))
+            if [ "$CURSOR" -gt 11 ]; then
+                CURSOR=1
+            fi
+            ;;
+        SPACE|ENTER)
+            if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 8 ]; then
+                eval "SEL_$CURSOR=\$((1 - SEL_$CURSOR))"
+            elif [ "$CURSOR" -eq 9 ]; then
+                do_install=1
+            elif [ "$CURSOR" -eq 10 ]; then
+                toggle_all
+            elif [ "$CURSOR" -eq 11 ]; then
+                echo -e "\n${BLUE}Goodbye!${NC}"
+                exit 0
+            fi
+            ;;
+        NUM_*)
+            num="${action#NUM_}"
+            eval "SEL_$num=\$((1 - SEL_$num))"
+            ;;
+        INSTALL)
+            do_install=1
+            ;;
+        ALL)
+            toggle_all
+            ;;
+        EXIT)
+            echo -e "\n${BLUE}Goodbye!${NC}"
+            exit 0
+            ;;
+    esac
+    
+    if [ "$do_install" -eq 1 ]; then
+        do_install=0 # Reset flag
+        
+        # Count selected tools
+        local count=0
+        for i in {1..8}; do
+            eval "local val=\$SEL_$i"
+            if [ "$val" -eq 1 ]; then
+                count=$((count + 1))
+            fi
+        done
+        
+        if [ "$count" -eq 0 ]; then
+            echo -e "\n${YELLOW}No tools selected. Use Up/Down + Space or numbers 1-8 to select.${NC}"
+            echo -e "\nPress Enter to continue..."
+            read -r
+            continue
+        fi
+        
+        echo -e "\n${BLUE}Starting installation of $count selected tool(s)...${NC}\n"
+        
+        # 1. Go
+        if [ "$SEL_1" -eq 1 ]; then
+            if [[ "$INST_GO" == "$LATEST_GO" ]] && ! confirm_reinstall "Go" "$LATEST_GO"; then
+                echo "Skipping Go."
+            else
+                install_go
+            fi
+            echo ""
+        fi
+        
+        # 2. Node LTS
+        if [ "$SEL_2" -eq 1 ]; then
+            if [[ "$INST_NODE" == "$LATEST_NODE_LTS" ]] && ! confirm_reinstall "Node.js (LTS)" "$LATEST_NODE_LTS"; then
+                echo "Skipping Node.js (LTS)."
+            else
+                install_node "$LATEST_NODE_LTS"
+            fi
+            echo ""
+        fi
+        
+        # 3. Node Current
+        if [ "$SEL_3" -eq 1 ]; then
+            if [[ "$INST_NODE" == "$LATEST_NODE_CURR" ]] && ! confirm_reinstall "Node.js (Current)" "$LATEST_NODE_CURR"; then
+                echo "Skipping Node.js (Current)."
+            else
+                install_node "$LATEST_NODE_CURR"
+            fi
+            echo ""
+        fi
+        
+        # 4. OrbStack
+        if [ "$SEL_4" -eq 1 ]; then
+            if [[ "$INST_ORB" == "$LATEST_ORB" ]] && ! confirm_reinstall "OrbStack" "$LATEST_ORB"; then
+                echo "Skipping OrbStack."
+            else
+                install_orb
+            fi
+            echo ""
+        fi
+        
+        # 5. VSCode
+        if [ "$SEL_5" -eq 1 ]; then
+            if [[ "$INST_VSCODE" == "$LATEST_VSCODE" ]] && ! confirm_reinstall "VSCode" "$LATEST_VSCODE"; then
+                echo "Skipping VSCode."
+            else
+                install_vscode
+            fi
+            echo ""
+        fi
+        
+        # 6. Python
+        if [ "$SEL_6" -eq 1 ]; then
+            if [[ "$INST_PYTHON" == "$LATEST_PYTHON" ]] && ! confirm_reinstall "Python" "$LATEST_PYTHON"; then
+                echo "Skipping Python."
+            else
+                install_python
+            fi
+            echo ""
+        fi
+        
+        # 7. Claude
+        if [ "$SEL_7" -eq 1 ]; then
+            if [[ "$INST_CLAUDE" == "$LATEST_CLAUDE" ]] && ! confirm_reinstall "Claude" "$LATEST_CLAUDE"; then
+                echo "Skipping Claude."
+            else
+                install_claude
+            fi
+            echo ""
+        fi
+        
+        # 8. Rust
+        if [ "$SEL_8" -eq 1 ]; then
+            if [[ "$INST_RUST" == "$LATEST_RUST" ]] && ! confirm_reinstall "Rust" "$LATEST_RUST"; then
+                echo "Skipping Rust."
+            else
+                install_rust
+            fi
+            echo ""
+        fi
+        
+        # Reset selections after installation
+        SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0
+        
+        echo -e "${GREEN}Batch installation completed!${NC}"
+        echo -e "Please run ${YELLOW}source ~/.zshrc${NC} to load environment changes."
+        echo -e "\nPress Enter to return to the menu..."
+        read -r
+    fi
+done
