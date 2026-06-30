@@ -6,6 +6,24 @@ Bộ cấu hình Zsh nhẹ cho macOS. Thêm highlight cú pháp, tô màu danh s
 
 Các cấu hình Zsh thông thường chỉ gợi ý lệnh *bắt đầu bằng* ký tự bạn gõ. Bộ cấu hình này tìm kiếm *toàn bộ* lịch sử và hiển thị kết quả kèm mũi tên `»`.
 
+## Cài đặt (Một lệnh duy nhất)
+
+Mở Terminal trên bất kỳ máy Mac nào và chạy:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/setup.sh | bash
+```
+
+> Script chỉ dùng công cụ có sẵn (`curl`, `unzip`, `zsh`). Không cần cài Git hay Xcode Command Line Tools.
+
+Sau đó áp dụng thay đổi cho terminal hiện tại:
+
+```bash
+source ~/.zshrc
+```
+
+---
+
 ## Bạn sẽ có gì
 
 - **Gợi ý lệnh thông minh** — Gõ bất kỳ từ nào, hệ thống sẽ tìm trong lịch sử dù từ đó nằm ở giữa câu lệnh. Không phân biệt hoa/thường (gõ `GOOGLE` sẽ tìm thấy `curl -I google.com`).
@@ -60,24 +78,6 @@ Chạy `install-dev-tool` để mở menu tương tác.
 - Ứng dụng desktop (VSCode, Claude, OrbStack) tự động tải về và đặt vào `/Applications`.
 - Git được cài qua công cụ chính thức của Apple (`xcode-select --install`).
 - Trình cài đặt tự kiểm tra phiên bản mới nhất khi khởi động.
-
----
-
-## Cài đặt (Một lệnh duy nhất)
-
-Mở Terminal trên bất kỳ máy Mac nào và chạy:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/setup.sh | bash
-```
-
-> Script chỉ dùng công cụ có sẵn (`curl`, `unzip`, `zsh`). Không cần cài Git hay Xcode Command Line Tools.
-
-Sau đó áp dụng thay đổi cho terminal hiện tại:
-
-```bash
-source ~/.zshrc
-```
 
 ---
 

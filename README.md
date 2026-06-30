@@ -6,6 +6,24 @@ A lightweight Zsh setup for macOS. It gives you syntax highlighting, colorful fi
 
 Most Zsh setups only suggest commands that *start with* what you type. This one searches your *entire* history for any match and shows it with a `»` arrow.
 
+## Install (One Command)
+
+Open Terminal on any Mac and run:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/setup.sh | bash
+```
+
+> The script only uses built-in tools (`curl`, `unzip`, `zsh`). You don't need Git or Xcode Command Line Tools.
+
+Then apply the changes to your current terminal:
+
+```bash
+source ~/.zshrc
+```
+
+---
+
 ## What You Get
 
 - **Smart Autosuggestions** — Type any word and get suggestions from your history, even if it appears in the middle of a command. Case doesn't matter (e.g., typing `GOOGLE` finds `curl -I google.com`).
@@ -60,24 +78,6 @@ Run `install-dev-tool` to open an interactive menu.
 - Desktop apps (VSCode, Claude, OrbStack) are downloaded and placed in `/Applications` automatically.
 - Git is installed through Apple's official `xcode-select --install`.
 - The installer checks for the latest versions automatically on startup.
-
----
-
-## Install (One Command)
-
-Open Terminal on any Mac and run:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/setup.sh | bash
-```
-
-> The script only uses built-in tools (`curl`, `unzip`, `zsh`). You don't need Git or Xcode Command Line Tools.
-
-Then apply the changes to your current terminal:
-
-```bash
-source ~/.zshrc
-```
 
 ---
 

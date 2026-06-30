@@ -6,6 +6,24 @@
 
 普通的 Zsh 配置只会推荐以你输入的字符*开头*的命令。这个工具会搜索你的*整个*历史记录，找到任何匹配的命令，并用 `»` 箭头标识出来。
 
+## 安装（一条命令）
+
+在任意 Mac 上打开终端，运行：
+
+```bash
+curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/setup.sh | bash
+```
+
+> 脚本只用系统自带工具（`curl`、`unzip`、`zsh`），不需要安装 Git 或 Xcode 命令行工具。
+
+然后让改动在当前终端生效：
+
+```bash
+source ~/.zshrc
+```
+
+---
+
 ## 你会得到什么
 
 - **智能自动建议** — 输入任意关键字，即使它出现在命令中间也能被找到。不区分大小写（输入 `GOOGLE` 能匹配到 `curl -I google.com`）。
@@ -60,24 +78,6 @@
 - 桌面应用（VSCode、Claude、OrbStack）会自动下载并放入 `/Applications`。
 - Git 通过 Apple 官方的 `xcode-select --install` 安装。
 - 安装器启动时会自动检查最新版本。
-
----
-
-## 安装（一条命令）
-
-在任意 Mac 上打开终端，运行：
-
-```bash
-curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/setup.sh | bash
-```
-
-> 脚本只用系统自带工具（`curl`、`unzip`、`zsh`），不需要安装 Git 或 Xcode 命令行工具。
-
-然后让改动在当前终端生效：
-
-```bash
-source ~/.zshrc
-```
 
 ---
 
