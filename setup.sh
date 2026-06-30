@@ -146,12 +146,12 @@ if command -v python3 &>/dev/null && _needs_env_block "Python"; then
 	_update_env_block "Python" "alias python=\"python3\"\nalias pip=\"pip3\""
 fi
 
-# 6. Backup existing ~/.zshrc if exists
+# 6. Save original ~/.zshrc for comparison, then update
 ZSHRC="$HOME/.zshrc"
+ORIGINAL_RC=""
 if [[ -f "$ZSHRC" ]]; then
-	BACKUP="$ZSHRC.bak.$(date +%Y%m%d%H%M%S)"
-	echo -e "${BLUE}Backing up existing .zshrc to $BACKUP...${NC}"
-	cp "$ZSHRC" "$BACKUP"
+	ORIGINAL_RC=$(mktemp /tmp/zshrc_original.XXXXXX)
+	cp "$ZSHRC" "$ORIGINAL_RC"
 else
 	touch "$ZSHRC"
 fi
@@ -399,6 +399,18 @@ if [[ -f "$HOME/.zsh/setup-zsh/env.zsh" ]]; then
 fi
 # <<< setup-zsh <<<
 EOF
+
+# 9. Backup only if content actually changed
+if [[ -n "$ORIGINAL_RC" ]]; then
+	if diff -q "$ZSHRC" "$ORIGINAL_RC" > /dev/null 2>&1; then
+		echo -e "${GREEN}✓ ~/.zshrc is already up to date, no backup needed.${NC}"
+	else
+		BACKUP="$ZSHRC.bak.$(date +%Y%m%d%H%M%S)"
+		echo -e "${BLUE}Backing up original .zshrc to $BACKUP...${NC}"
+		cp "$ORIGINAL_RC" "$BACKUP"
+	fi
+	rm -f "$ORIGINAL_RC"
+fi
 
 echo -e "${GREEN}✓ ~/.zshrc updated successfully!${NC}"
 
