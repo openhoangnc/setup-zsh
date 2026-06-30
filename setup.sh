@@ -79,6 +79,73 @@ else
 	echo -e "${GREEN}✓ Plugins installed from openhoangnc/setup-zsh repository.${NC}"
 fi
 
+# 5. Auto-detect installed dev tools and regenerate env.zsh
+ENV_FILE="$HOME/.zsh/setup-zsh/env.zsh"
+
+_update_env_block() {
+	local marker="$1"
+	local content="$2"
+
+	mkdir -p "$(dirname "$ENV_FILE")"
+	touch "$ENV_FILE"
+
+	local temp_file
+	temp_file=$(mktemp /tmp/env_zsh.XXXXXX)
+	awk -v start="# >>> ${marker} >>>" -v end="# <<< ${marker} <<<" '
+		$0 == start {p=1; next}
+		$0 == end {p=0; next}
+		!p
+	' "$ENV_FILE" > "$temp_file"
+
+	if [[ -n "$content" ]]; then
+		echo -e "# >>> ${marker} >>>\n${content}\n# <<< ${marker} <<<" >> "$temp_file"
+	fi
+
+	mv "$temp_file" "$ENV_FILE"
+}
+
+_needs_env_block() {
+	local marker="$1"
+	[[ ! -f "$ENV_FILE" ]] && return 0
+	! grep -q "# >>> ${marker} >>>" "$ENV_FILE"
+}
+
+# Go
+if [[ -x "$HOME/.local/go/bin/go" ]] && _needs_env_block "Go"; then
+	echo -e "${BLUE}Detected Go at ~/.local/go, adding to PATH...${NC}"
+	_update_env_block "Go" "export GOROOT=\"\$HOME/.local/go\"\nexport GOPATH=\"\$HOME/go\"\nexport PATH=\"\$GOROOT/bin:\$GOPATH/bin:\$PATH\""
+fi
+
+# Node
+if [[ -x "$HOME/.local/node/bin/node" ]] && _needs_env_block "Node"; then
+	echo -e "${BLUE}Detected Node.js at ~/.local/node, adding to PATH...${NC}"
+	_update_env_block "Node" "export PATH=\"\$HOME/.local/node/bin:\$PATH\""
+fi
+
+# Rust
+if [[ -x "$HOME/.cargo/bin/rustc" ]] && _needs_env_block "Rust"; then
+	echo -e "${BLUE}Detected Rust at ~/.cargo, adding to PATH...${NC}"
+	_update_env_block "Rust" "export PATH=\"\$HOME/.cargo/bin:\$PATH\""
+fi
+
+# OrbStack
+if [[ -d "/Applications/OrbStack.app/Contents/MacOS/bin" ]] && _needs_env_block "OrbStack"; then
+	echo -e "${BLUE}Detected OrbStack, adding to PATH...${NC}"
+	_update_env_block "OrbStack" "if [[ -d \"/Applications/OrbStack.app/Contents/MacOS/bin\" ]]; then\n  export PATH=\"/Applications/OrbStack.app/Contents/MacOS/bin:\$PATH\"\nfi"
+fi
+
+# VSCode
+if [[ -d "/Applications/Visual Studio Code.app/Contents/Resources/app/bin" ]] && _needs_env_block "VSCode"; then
+	echo -e "${BLUE}Detected VSCode, adding to PATH...${NC}"
+	_update_env_block "VSCode" "export PATH=\"/Applications/Visual Studio Code.app/Contents/Resources/app/bin:\$PATH\""
+fi
+
+# Python aliases
+if command -v python3 &>/dev/null && _needs_env_block "Python"; then
+	echo -e "${BLUE}Detected Python3, adding aliases...${NC}"
+	_update_env_block "Python" "alias python=\"python3\"\nalias pip=\"pip3\""
+fi
+
 # 6. Backup existing ~/.zshrc if exists
 ZSHRC="$HOME/.zshrc"
 if [[ -f "$ZSHRC" ]]; then
