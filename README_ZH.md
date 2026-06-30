@@ -2,58 +2,78 @@
 
 🌐 [English](README.md) | [Tiếng Việt](README_VI.md) | [简体中文](README_ZH.md)
 
+一个轻量的 macOS Zsh 配置工具。自带语法高亮、彩色文件列表、简洁的提示符，以及**能匹配历史记录中任意位置的智能补全建议**。
 
-一个专为 macOS 设计的轻量、高端 Zsh 配置脚本，集成了语法高亮、彩色的文件列表、时尚极简的命令提示符，以及自定义的**任意匹配（子字符串）自动建议策略**。
+普通的 Zsh 配置只会推荐以你输入的字符*开头*的命令。这个工具会搜索你的*整个*历史记录，找到任何匹配的命令，并用 `↳` 箭头标识出来。
 
-与仅建议以您键入的字符开头的命令的标准配置不同，此设置可匹配历史记录中的**任何子字符串**，并使用优雅的补全指示符（`↳`）对其进行格式化。
+## 你会得到什么
 
-## 功能特点
-
-- **任意匹配自动建议 (Match-Any Autosuggestions)**：在您的完整历史记录中不区分大小写地搜索包含输入内容的任何命令（例如，输入 `GOOGLE` 即可匹配并自动补全 `curl -I google.com`）。
-- **子字符串历史记录轮转 (Substring History Cycling)**：输入任意关键字，然后按 **上/下方向键** 即可轮转浏览历史记录中包含该关键字的所有命令（不区分大小写）。
-- **语法高亮 (Syntax Highlighting)**：实时语法检查（有效命令为绿色，无效命令为红色）。
-- **类 Fish 提示符 (Sleek Fish-like Prompt)**：现代极简的提示符显示为 `username (branch*) ❯`。当在 Git 仓库内时，会自动显示当前 Git 分支及其状态（清洁/脏），且命令失败时箭头会变成粉红色。
-- **自动切换目录 (Auto-CD)**：无需输入 `cd` 前缀，直接输入目录路径即可快速切换目录。
-- **增强的目录颜色 (Enhanced Directory Colors)**：自定义的 `LSCOLORS`，使文件和目录在深色/浅色背景下都具有生动的颜色显示。
-- **优化的默认设置 (Optimized Defaults)**：启用 Zsh 的 Tab 标签自动补全、历史记录自动追加、减少重复记录，并将单次会话历史容量增加到 100,000 条命令。
+- **智能自动建议** — 输入任意关键字，即使它出现在命令中间也能被找到。不区分大小写（输入 `GOOGLE` 能匹配到 `curl -I google.com`）。
+- **方向键翻阅历史** — 输入关键字后按 **上/下方向键**，逐条浏览包含该关键字的历史命令。
+- **语法高亮** — 输入时实时显示：有效命令变绿，无效命令变红。
+- **简洁提示符** — 显示 `username (branch*) ❯`。在 Git 仓库中会显示分支名和修改状态。上一条命令失败时箭头变粉。
+- **自动切换目录** — 直接输入路径按回车，不用打 `cd`。
+- **彩色文件列表** — 文件和目录有各自的颜色，深色和浅色背景都好看。
+- **更好的默认设置** — Tab 补全、历史记录去重、最多保存 100,000 条命令。
+- **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Go、Node.js、OrbStack、VSCode、Python、Claude、Rust 和 Git。用方向键选择即可。
 
 ---
 
-## 使用指南
+## 使用方法
 
-### 1. 任意匹配自动建议 (Match-Any Autosuggestions)
-当您输入时，Zsh 会自动从历史记录中建议最近的匹配命令（以淡灰色文字显示）。
-- **前缀匹配 (Prefix Match)**：如果您输入 `curl`，它会建议 ` -I google.com`。按 `Tab` 或 `右方向键` 来接受整个建议。
-- **子字符串匹配 (Substring Match)**：如果您输入 `google`（或 `GOOGLE`，因为不区分大小写），它将显示 ` ↳ curl -I google.com`。
-  - 按 **`Tab`**、**`右方向键`** 或 **`Control + F`** 键来接受完整的建议。
-  - 按 **`Option + 右方向键`**（或 `Alt + F`）来**逐词（word-by-word）**接受建议。
-- **轮转浏览多个匹配项**：如果建议的命令不是您想要的，按 **上方向键** 可以用最新的历史记录匹配项替换该行，并继续按 **上/下方向键** 轮转浏览历史记录中的所有匹配命令。
+### 1. 智能自动建议
 
-### 2. 自动切换目录 (Auto-CD)
-为了更快速地切换目录，只需直接输入任何目录路径并按 `Enter` 键即可：
+输入时，Zsh 会自动显示历史记录中的灰色建议文本。
+
+- **前缀匹配**：输入 `curl` → 看到灰色的 ` -I google.com`。按 `Tab` 或 `→` 接受。
+- **子串匹配**：输入 `google` → 看到 `↳ curl -I google.com`。
+  - 按 **`Tab`**、**`→`** 或 **`Ctrl+F`** 接受整条建议。
+  - 按 **`Option+→`**（或 `Alt+F`）逐词接受。
+- **查看更多匹配**：按 **上方向键** 替换为另一个匹配结果，继续按 **上/下** 逐条浏览。
+
+### 2. 自动切换目录
+
+直接输入路径按回车：
 ```bash
-~/Downloads  # 自动运行 cd ~/Downloads
-..           # 自动运行 cd ..
+~/Downloads  # 进入 ~/Downloads
+..           # 返回上级目录
 ```
 
-### 3. Fish 样式的提示符
-- 提示符显示为 `username (branch*) ❯ `。
-- 如果当前 Git 分支有未提交的更改，会显示粉红色的 `*`。如果有已暂存的更改，会显示绿色的 `+`。
-- 如果上一个命令执行失败，箭头 `❯` 会变成粉红色。
+### 3. Git 感知提示符
+
+- 显示 `username (branch*) ❯ `。
+- 粉色 `*` = 有未暂存的修改。绿色 `+` = 有已暂存的修改。
+- 箭头 `❯` 在上一条命令失败时变粉。
+
+### 4. 开发工具安装器 (`install-dev-tool`)
+
+运行 `install-dev-tool` 打开交互菜单。
+
+- **导航**：用 **上/下方向键** 移动光标（`❯`）。
+- **选择工具**：按 **空格键** 或 **回车** 勾选/取消（`[ ]` ↔ `[✓]`）。
+- **安装**：移到 `[I] Install Selected Tools` 按 **回车**（或输入 `I`）。
+- **全选**：在 `[A] Toggle All` 上按 **回车**。
+- **退出**：在 `[E] Exit` 上按 **回车**。
+
+**小贴士：**
+- Go 和 Node.js 安装到 `~/.local/`——不需要 `sudo`，全局安装 npm 包也不需要。
+- 桌面应用（VSCode、Claude、OrbStack）会自动下载并放入 `/Applications`。
+- Git 通过 Apple 官方的 `xcode-select --install` 安装。
+- 安装器启动时会自动检查最新版本。
 
 ---
 
-## 一键安装
+## 安装（一条命令）
 
-要在全新的 MacBook（或任何现有的 macOS 终端）上设置 Zsh，只需打开终端并运行以下命令：
+在任意 Mac 上打开终端，运行：
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/setup.sh | bash
 ```
 
-*注意：本安装脚本仅使用系统内置工具 (`curl`, `unzip`, `zsh`)，无需安装 Git 或 Xcode 命令行工具即可下载或安装插件。*
+> 脚本只用系统自带工具（`curl`、`unzip`、`zsh`），不需要安装 Git 或 Xcode 命令行工具。
 
-脚本运行完成后，在当前终端会话中使更改生效：
+然后让改动在当前终端生效：
 
 ```bash
 source ~/.zshrc
@@ -61,24 +81,24 @@ source ~/.zshrc
 
 ---
 
-## 一键卸载
+## 卸载（一条命令）
 
-如果您希望移除此配置并恢复到原始设置，请运行：
+想全部移除、恢复原始设置：
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/uninstall.sh | bash
 ```
 
-这行命令将执行：
-1. **安全移除 setup-zsh 配置块**：利用智能起始/结束标记检测逻辑从您的 `~/.zshrc` 文件中移除相关配置，保留您自定义的其他别名或脚本。如果 `.zshrc` 文件原本不存在（是由本脚本从零创建的），卸载后文件将被自动删除。
-2. **移除隔离的插件目录**：删除位于 `~/.zsh/setup-zsh/` 下的插件目录（确保不会与您标准的其他 `.zsh` 目录产生冲突）。
+这条命令会：
+1. **从 `~/.zshrc` 中移除 setup-zsh 的配置** — 你自己写的别名和设置不受影响。如果文件是脚本创建的且现在为空，会被自动删除。
+2. **删除插件目录** `~/.zsh/setup-zsh/` — 不会动 `~/.zsh/` 下的其他内容。
 
 ---
 
-## 许可证 (License)
+## 许可证
 
-本仓库的代码采用 [MIT License](LICENSE) 许可证进行分发。
+采用 [MIT License](LICENSE) 分发。
 
-本安装包在 `plugins/` 目录下重新分发了以下第三方插件：
-- **`zsh-syntax-highlighting`**：采用 [BSD 3-Clause License](plugins/zsh-syntax-highlighting/COPYING.md) 许可证。
-- **`zsh-autosuggestions`**：采用 [MIT License](plugins/zsh-autosuggestions/LICENSE) 许可证。
+`plugins/` 目录包含以下第三方插件：
+- **zsh-syntax-highlighting** — [BSD 3-Clause License](plugins/zsh-syntax-highlighting/COPYING.md)
+- **zsh-autosuggestions** — [MIT License](plugins/zsh-autosuggestions/LICENSE)

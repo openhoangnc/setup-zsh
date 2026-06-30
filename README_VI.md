@@ -2,58 +2,78 @@
 
 🌐 [English](README.md) | [Tiếng Việt](README_VI.md) | [简体中文](README_ZH.md)
 
+Bộ cấu hình Zsh nhẹ cho macOS. Thêm highlight cú pháp, tô màu danh sách file, prompt đẹp, và **gợi ý lệnh thông minh khớp bất kỳ phần nào trong lịch sử**.
 
-Một bộ cấu hình Zsh nhẹ và cao cấp dành cho macOS giúp tích hợp highlight cú pháp, tô màu hiển thị danh sách tệp, prompt tối giản đẹp mắt và chiến lược **tự động gợi ý so khớp bất kỳ (substring autosuggestions)**.
+Các cấu hình Zsh thông thường chỉ gợi ý lệnh *bắt đầu bằng* ký tự bạn gõ. Bộ cấu hình này tìm kiếm *toàn bộ* lịch sử và hiển thị kết quả kèm mũi tên `↳`.
 
-Khác với các cấu hình tiêu chuẩn chỉ gợi ý các lệnh bắt đầu bằng các ký tự bạn đã nhập, bộ cấu hình này tìm kiếm **bất kỳ chuỗi con nào** trong lịch sử lệnh của bạn và định dạng chúng bằng một ký hiệu hoàn thành thanh lịch (`↳`).
+## Bạn sẽ có gì
 
-## Tính năng nổi bật
-
-- **Tự động gợi ý so khớp bất kỳ (Match-Any Autosuggestions)**: Tìm kiếm không phân biệt chữ hoa/chữ thường trong toàn bộ lịch sử của bạn để gợi ý bất kỳ lệnh nào chứa nội dung bạn đã nhập (ví dụ: gõ `GOOGLE` sẽ tự động gợi ý và khớp lệnh `curl -I google.com`).
-- **Duyệt lịch sử so khớp chuỗi con (Substring History Cycling)**: Gõ bất kỳ từ khóa nào và nhấn phím **Mũi tên Lên / Xuống** để duyệt qua tất cả các lệnh trong lịch sử chứa từ khóa đó (không phân biệt hoa/thường).
-- **Highlight cú pháp (Syntax Highlighting)**: Kiểm tra và highlight cú pháp thời gian thực (màu xanh lá cây cho các lệnh hợp lệ, màu đỏ cho các lệnh không hợp lệ).
-- **Prompt tối giản kiểu Fish**: Prompt hiện đại, tinh gọn dạng `username (branch*) ❯` hiển thị nhánh Git hiện tại cùng trạng thái (clean/dirty) nếu bạn đang ở trong thư mục dự án Git, cùng mũi tên trạng thái chuyển sang màu hồng nếu lệnh trước đó bị lỗi.
-- **Tự động chuyển thư mục (Auto-CD)**: Chuyển nhanh đến các thư mục bằng cách nhập trực tiếp đường dẫn thư mục mà không cần gõ lệnh `cd`.
-- **Màu sắc thư mục nổi bật**: Cấu hình `LSCOLORS` tùy chỉnh giúp các tệp và thư mục hiển thị trực quan và sinh động trên cả nền giao diện sáng/tối.
-- **Cấu hình mặc định tối ưu**: Kích hoạt tab-completion của Zsh, tự động lưu lịch sử lệnh, loại bỏ trùng lặp và tăng sức chứa lịch sử phiên lên 100,000 lệnh.
+- **Gợi ý lệnh thông minh** — Gõ bất kỳ từ nào, hệ thống sẽ tìm trong lịch sử dù từ đó nằm ở giữa câu lệnh. Không phân biệt hoa/thường (gõ `GOOGLE` sẽ tìm thấy `curl -I google.com`).
+- **Duyệt lịch sử bằng phím mũi tên** — Gõ từ khóa rồi nhấn **Lên / Xuống** để xem lần lượt các lệnh chứa từ khóa đó.
+- **Highlight cú pháp** — Lệnh hợp lệ hiện màu xanh, lệnh sai hiện màu đỏ — ngay khi bạn gõ.
+- **Prompt gọn đẹp** — Hiển thị `username (branch*) ❯`. Trong thư mục Git, bạn thấy tên nhánh và trạng thái thay đổi. Mũi tên chuyển hồng nếu lệnh trước bị lỗi.
+- **Tự động chuyển thư mục** — Gõ đường dẫn thư mục rồi Enter. Không cần gõ `cd`.
+- **Màu sắc file nổi bật** — File và thư mục có màu riêng, đẹp trên cả giao diện sáng lẫn tối.
+- **Cấu hình mặc định tốt hơn** — Tab completion, lịch sử không trùng lặp, lưu tới 100.000 lệnh.
+- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Go, Node.js, OrbStack, VSCode, Python, Claude, Rust, và Git. Chọn bằng phím mũi tên.
 
 ---
 
-## Hướng dẫn sử dụng
+## Cách sử dụng
 
-### 1. Tự động gợi ý so khớp bất kỳ (Match-Any Autosuggestions)
-Khi bạn gõ lệnh, Zsh sẽ tự động hiển thị gợi ý lệnh phù hợp gần đây nhất từ lịch sử lệnh của bạn dưới dạng văn bản mờ (ghost text).
-- **So khớp tiền tố (Prefix Match)**: Nếu bạn gõ `curl`, gợi ý sẽ hiển thị ` -I google.com`. Nhấn `Tab` hoặc `Mũi tên phải` để áp dụng toàn bộ gợi ý.
-- **So khớp chuỗi con (Substring Match)**: Nếu bạn gõ `google` (hoặc `GOOGLE` do không phân biệt chữ hoa/thường), gợi ý sẽ hiển thị ` ↳ curl -I google.com`.
-  - Nhấn **`Tab`**, **`Mũi tên phải`**, hoặc **`Control + F`** để áp dụng toàn bộ gợi ý.
-  - Nhấn **`Option + Mũi tên phải`** (hoặc `Alt + F`) để áp dụng gợi ý **từng từ một (word-by-word)**.
-- **Duyệt qua nhiều kết quả phù hợp**: Nếu lệnh gợi ý không phải là lệnh bạn muốn, hãy nhấn phím **Mũi tên Lên** để thay thế dòng lệnh bằng kết quả khớp mới nhất và tiếp tục nhấn **Mũi tên Lên / Xuống** để duyệt qua tất cả các lệnh khớp trong lịch sử.
+### 1. Gợi ý lệnh thông minh
 
-### 2. Tự động chuyển thư mục (Auto-CD)
-Để chuyển thư mục nhanh hơn, chỉ cần gõ đường dẫn thư mục bất kỳ và nhấn `Enter`:
+Khi bạn gõ, Zsh tự động hiện gợi ý mờ từ lịch sử lệnh.
+
+- **Khớp đầu câu**: Gõ `curl` → thấy ` -I google.com` màu xám. Nhấn `Tab` hoặc `→` để chấp nhận.
+- **Khớp ở giữa**: Gõ `google` → thấy `↳ curl -I google.com`.
+  - Nhấn **`Tab`**, **`→`**, hoặc **`Ctrl+F`** để chấp nhận toàn bộ.
+  - Nhấn **`Option+→`** (hoặc `Alt+F`) để chấp nhận từng từ.
+- **Xem thêm kết quả**: Nhấn **Mũi tên Lên** để thay bằng kết quả khác, tiếp tục nhấn **Lên / Xuống** để duyệt hết.
+
+### 2. Tự động chuyển thư mục
+
+Gõ đường dẫn rồi nhấn Enter:
 ```bash
-~/Downloads  # Tự động thực hiện lệnh cd ~/Downloads
-..           # Tự động thực hiện lệnh cd ..
+~/Downloads  # chuyển đến ~/Downloads
+..           # lùi lại một cấp
 ```
 
-### 3. Prompt phong cách Fish
-- Prompt hiển thị dưới dạng `username (branch*) ❯ `.
-- Nếu nhánh Git hiện tại có thay đổi chưa commit, một dấu `*` màu hồng sẽ xuất hiện. Nếu có tệp đã được đưa vào khu vực chờ (staged changes), dấu `+` màu xanh lá cây sẽ xuất hiện.
-- Mũi tên `❯` sẽ chuyển sang màu hồng nếu lệnh cuối cùng chạy thất bại.
+### 3. Prompt hiển thị Git
+
+- Hiển thị `username (branch*) ❯ `.
+- Dấu `*` hồng = có thay đổi chưa stage. Dấu `+` xanh = có thay đổi đã stage.
+- Mũi tên `❯` chuyển hồng nếu lệnh cuối bị lỗi.
+
+### 4. Cài đặt công cụ lập trình (`install-dev-tool`)
+
+Chạy `install-dev-tool` để mở menu tương tác.
+
+- **Di chuyển**: Dùng phím **Lên / Xuống** để di chuyển con trỏ (`❯`).
+- **Chọn công cụ**: Nhấn **Space** hoặc **Enter** để đánh dấu chọn (`[ ]` ↔ `[✓]`).
+- **Cài đặt**: Chuyển đến `[I] Install Selected Tools` rồi nhấn **Enter** (hoặc gõ `I`).
+- **Chọn tất cả**: Nhấn **Enter** trên `[A] Toggle All`.
+- **Thoát**: Nhấn **Enter** trên `[E] Exit`.
+
+**Lưu ý thêm:**
+- Go và Node.js cài vào `~/.local/` — không cần `sudo`, kể cả khi cài npm package toàn cục.
+- Ứng dụng desktop (VSCode, Claude, OrbStack) tự động tải về và đặt vào `/Applications`.
+- Git được cài qua công cụ chính thức của Apple (`xcode-select --install`).
+- Trình cài đặt tự kiểm tra phiên bản mới nhất khi khởi động.
 
 ---
 
-## Cài đặt nhanh (Một dòng lệnh duy nhất)
+## Cài đặt (Một lệnh duy nhất)
 
-Để thiết lập cấu hình Zsh trên một chiếc MacBook hoàn toàn mới (hoặc bất kỳ thiết bị macOS nào), chỉ cần mở Terminal và chạy lệnh sau:
+Mở Terminal trên bất kỳ máy Mac nào và chạy:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/setup.sh | bash
 ```
 
-*Lưu ý: Kịch bản cài đặt chỉ sử dụng các công cụ có sẵn trong hệ thống (`curl`, `unzip`, `zsh`) và không yêu cầu cài đặt Git hoặc Xcode Command Line Tools để tải xuống các plugin.*
+> Script chỉ dùng công cụ có sẵn (`curl`, `unzip`, `zsh`). Không cần cài Git hay Xcode Command Line Tools.
 
-Sau khi chạy xong kịch bản, áp dụng các thay đổi cho phiên terminal hiện tại của bạn:
+Sau đó áp dụng thay đổi cho terminal hiện tại:
 
 ```bash
 source ~/.zshrc
@@ -61,24 +81,24 @@ source ~/.zshrc
 
 ---
 
-## Gỡ cài đặt nhanh (Một dòng lệnh duy nhất)
+## Gỡ cài đặt (Một lệnh duy nhất)
 
-Nếu bạn muốn gỡ bỏ cấu hình này và khôi phục cài đặt gốc:
+Muốn xóa hết và trở về cài đặt gốc:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/uninstall.sh | bash
 ```
 
-Lệnh duy nhất này sẽ thực hiện:
-1. **Gỡ bỏ an toàn khối cấu hình setup-zsh** khỏi tệp `~/.zshrc` của bạn bằng cách sử dụng các thẻ đánh dấu khởi đầu/kết thúc thông minh, bảo toàn tất cả các cấu hình hoặc bí danh (alias) tự tạo khác của bạn. Nếu tệp `.zshrc` của bạn được tạo mới hoàn toàn và nay không còn nội dung gì khác, nó sẽ tự động bị xóa.
-2. **Xóa bỏ thư mục plugin riêng biệt** nằm tại `~/.zsh/setup-zsh/` (đảm bảo không gây ảnh hưởng đến các thư mục `.zsh` tiêu chuẩn khác của bạn).
+Lệnh này sẽ:
+1. **Xóa phần cấu hình setup-zsh** khỏi `~/.zshrc` — các alias và cấu hình riêng của bạn được giữ nguyên. Nếu file do script tạo ra và giờ trống, nó sẽ bị xóa luôn.
+2. **Xóa thư mục plugin** tại `~/.zsh/setup-zsh/` — không ảnh hưởng gì đến các thư mục khác trong `~/.zsh/`.
 
 ---
 
-## Bản quyền (License)
+## Bản quyền
 
-Mã nguồn của kho lưu trữ này được phân phối theo [MIT License](LICENSE).
+Phân phối theo [MIT License](LICENSE).
 
-Bộ cài đặt này phân phối lại các plugin của bên thứ ba trong thư mục `plugins/`:
-- **`zsh-syntax-highlighting`**: Được cấp phép theo [BSD 3-Clause License](plugins/zsh-syntax-highlighting/COPYING.md).
-- **`zsh-autosuggestions`**: Được cấp phép theo [MIT License](plugins/zsh-autosuggestions/LICENSE).
+Bao gồm các plugin bên thứ ba trong thư mục `plugins/`:
+- **zsh-syntax-highlighting** — [BSD 3-Clause License](plugins/zsh-syntax-highlighting/COPYING.md)
+- **zsh-autosuggestions** — [MIT License](plugins/zsh-autosuggestions/LICENSE)

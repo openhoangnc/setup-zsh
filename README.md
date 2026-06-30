@@ -2,58 +2,78 @@
 
 🌐 [English](README.md) | [Tiếng Việt](README_VI.md) | [简体中文](README_ZH.md)
 
+A lightweight Zsh setup for macOS. It gives you syntax highlighting, colorful file listings, a clean prompt, and **smart autosuggestions that match any part of your command history**.
 
-A premium, lightweight Zsh configuration script for macOS that adds syntax highlighting, colored file listings, a sleek minimal prompt, and a custom **match-any (substring) autosuggestions strategy**.
+Most Zsh setups only suggest commands that *start with* what you type. This one searches your *entire* history for any match and shows it with a `↳` arrow.
 
-Unlike standard configurations that only suggest commands starting with your typed characters, this setup matches **any substring** in your history and formats them with an elegant completion indicator (`↳`).
+## What You Get
 
-## Features
-
-- **Match-Any Autosuggestions**: Suggestions search your entire history for any command containing your input case-insensitively (e.g. typing `GOOGLE` matches and auto-completes `curl -I google.com`).
-- **Substring History Cycling**: Type a keyword and press the **Up / Down arrow keys** to cycle through all commands in your history containing that keyword (case-insensitive).
-- **Syntax Highlighting**: Real-time syntax check (green for valid commands, red for invalid).
-- **Sleek Fish-like Prompt**: A modern, minimal prompt showing `username (branch*) ❯` which displays the current Git branch and its state (clean/dirty) if inside a Git repo, and a colored arrow that turns pink if the last command failed.
-- **Auto-CD**: Jump to directories instantly by entering the directory path directly without typing the `cd` prefix.
-- **Enhanced Directory Colors**: Customized `LSCOLORS` to give files and directories a vibrant look on light/dark backgrounds.
-- **Optimized Defaults**: Enables Zsh tab completion, history appending, duplicate reductions, and increases session history to 100,000 commands.
+- **Smart Autosuggestions** — Type any word and get suggestions from your history, even if it appears in the middle of a command. Case doesn't matter (e.g., typing `GOOGLE` finds `curl -I google.com`).
+- **History Search with Arrow Keys** — Type a keyword, then press **Up / Down** to scroll through every past command that contains it.
+- **Syntax Highlighting** — Commands turn green if valid, red if not — in real time as you type.
+- **Clean Prompt** — Shows `username (branch*) ❯`. Inside a Git repo, you see the branch name and whether you have uncommitted changes. The arrow turns pink if the last command failed.
+- **Auto-CD** — Type a directory path and press Enter. No need to type `cd` first.
+- **Colorful File Listings** — Files and folders get distinct colors that look good on both light and dark backgrounds.
+- **Better Defaults** — Tab completion, smarter history (no duplicates), and up to 100,000 commands saved.
+- **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Go, Node.js, OrbStack, VSCode, Python, Claude, Rust, and Git. Navigate with arrow keys, pick what you need.
 
 ---
 
-## Usage Guide
+## How to Use
 
-### 1. Match-Any Autosuggestions
-As you type, Zsh will automatically suggest the most recent matching command from your history.
-- **Prefix Match**: If you type `curl`, it suggests ` -I google.com` in faint gray. Press `Tab` or `Right Arrow` to accept.
-- **Substring Match**: If you type `google` (or `GOOGLE` since it's case-insensitive), it will show ` ↳ curl -I google.com`.
-  - Press **`Tab`**, **`Right Arrow`**, or **`Control + F`** to accept the full suggestion.
-  - Press **`Option + Right Arrow`** (or `Alt + F`) to accept the suggestion **word-by-word**.
-- **Cycle through multiple matches**: If the suggested command isn't the one you wanted, press the **Up Arrow** key to replace the line with the latest match, and continue pressing **Up/Down Arrows** to cycle through all matching commands in your history.
+### 1. Smart Autosuggestions
+
+As you type, Zsh shows a faded suggestion from your history.
+
+- **Starts with your text**: Type `curl` → see ` -I google.com` in gray. Press `Tab` or `→` to accept.
+- **Contains your text**: Type `google` → see `↳ curl -I google.com`.
+  - Press **`Tab`**, **`→`**, or **`Ctrl+F`** to accept the whole suggestion.
+  - Press **`Option+→`** (or `Alt+F`) to accept one word at a time.
+- **Browse more matches**: Press **Up Arrow** to replace the line with another match, then keep pressing **Up / Down** to cycle through all matches.
 
 ### 2. Auto-CD
-To navigate directories faster, simply type any directory path and press `Enter`:
+
+Just type a path and press Enter:
 ```bash
-~/Downloads  # Automatically runs cd ~/Downloads
-..           # Automatically runs cd ..
+~/Downloads  # goes to ~/Downloads
+..           # goes up one folder
 ```
 
-### 3. Fish-Style Prompt
-- The prompt shows `username (branch*) ❯ `.
-- If a Git branch has unstaged changes, a pink `*` is shown. If there are staged changes, a green `+` is shown.
-- The arrow `❯` turns pink if the last command returned a non-zero exit code (failed).
+### 3. Git-Aware Prompt
+
+- Shows `username (branch*) ❯ `.
+- Pink `*` = you have unstaged changes. Green `+` = you have staged changes.
+- Arrow `❯` turns pink if the last command failed.
+
+### 4. Dev Tools Installer (`install-dev-tool`)
+
+Run `install-dev-tool` to open an interactive menu.
+
+- **Navigate**: Use **Up / Down** arrow keys to move the cursor (`❯`).
+- **Select tools**: Press **Space** or **Enter** to check/uncheck a tool (`[ ]` ↔ `[✓]`).
+- **Install**: Move to `[I] Install Selected Tools` and press **Enter** (or type `I`).
+- **Select all**: Press **Enter** on `[A] Toggle All`.
+- **Quit**: Press **Enter** on `[E] Exit`.
+
+**Good to know:**
+- Go and Node.js install to `~/.local/` — no `sudo` needed, even for global npm packages.
+- Desktop apps (VSCode, Claude, OrbStack) are downloaded and placed in `/Applications` automatically.
+- Git is installed through Apple's official `xcode-select --install`.
+- The installer checks for the latest versions automatically on startup.
 
 ---
 
-## Quick Setup (Single Command)
+## Install (One Command)
 
-To set up Zsh on a brand-new MacBook (or any existing macOS terminal), simply open Terminal and run the following command:
+Open Terminal on any Mac and run:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/setup.sh | bash
 ```
 
-*Note: The script uses only built-in tools (`curl`, `unzip`, `zsh`) and does not require Git or Xcode Command Line Tools to download or install plugins.*
+> The script only uses built-in tools (`curl`, `unzip`, `zsh`). You don't need Git or Xcode Command Line Tools.
 
-After the script finishes, apply the changes to your current session:
+Then apply the changes to your current terminal:
 
 ```bash
 source ~/.zshrc
@@ -61,26 +81,24 @@ source ~/.zshrc
 
 ---
 
-## Quick Uninstall (Single Command)
+## Uninstall (One Command)
 
-If you wish to remove this configuration and revert to your original settings, run:
+To remove everything and go back to your original settings:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/uninstall.sh | bash
 ```
 
-This single command will:
-1. **Safely remove the custom config block** from your `~/.zshrc` file using a clean marker detection logic, preserving any other custom aliases/scripts you had. If the file was created from scratch and is now empty, it will be deleted.
-2. **Remove the isolated plugin folder** located at `~/.zsh/setup-zsh/` (ensuring no collision with your standard plugin folders).
+This will:
+1. **Remove the setup-zsh config** from your `~/.zshrc` — your own custom aliases and settings are kept safe. If the file was created by this script and is now empty, it gets deleted.
+2. **Delete the plugin folder** at `~/.zsh/setup-zsh/` — nothing else in `~/.zsh/` is touched.
 
 ---
 
 ## License
 
-This repository is licensed under the [MIT License](LICENSE).
+Licensed under the [MIT License](LICENSE).
 
-It redistributes the following third-party plugins in the `plugins/` directory:
-- **`zsh-syntax-highlighting`**: Licensed under the [BSD 3-Clause License](plugins/zsh-syntax-highlighting/COPYING.md).
-- **`zsh-autosuggestions`**: Licensed under the [MIT License](plugins/zsh-autosuggestions/LICENSE).
-
-
+Includes these third-party plugins in the `plugins/` directory:
+- **zsh-syntax-highlighting** — [BSD 3-Clause License](plugins/zsh-syntax-highlighting/COPYING.md)
+- **zsh-autosuggestions** — [MIT License](plugins/zsh-autosuggestions/LICENSE)
