@@ -719,9 +719,9 @@ while true; do
         do_install=0 # Reset flag
         
         # Count selected tools
-        local count=0
+        count=0
         for i in {1..11}; do
-            eval "local val=\$SEL_$i"
+            eval "val=\$SEL_$i"
             if [ "$val" -eq 1 ]; then
                 count=$((count + 1))
             fi
