@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Tự động chuyển thư mục** — Gõ đường dẫn thư mục rồi Enter. Không cần gõ `cd`.
 - **Màu sắc file nổi bật** — File và thư mục có màu riêng, đẹp trên cả giao diện sáng lẫn tối.
 - **Cấu hình mặc định tốt hơn** — Tab completion, lịch sử không trùng lặp, lưu tới 100.000 lệnh.
-- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Go, Node.js, OrbStack, VSCode, Python, Claude, Rust, và Git. Chọn bằng phím mũi tên.
+- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Go, Node.js, OrbStack, VSCode, Python, Claude, Rust, Git, MongoDB Compass, và DBeaver. Chọn bằng phím mũi tên.
 
 ---
 
@@ -75,7 +75,7 @@ Chạy `install-dev-tool` để mở menu tương tác.
 
 **Lưu ý thêm:**
 - Go và Node.js cài vào `~/.local/` — không cần `sudo`, kể cả khi cài npm package toàn cục.
-- Ứng dụng desktop (VSCode, Claude, OrbStack) tự động tải về và đặt vào `/Applications`.
+- Ứng dụng desktop (VSCode, Claude, OrbStack, MongoDB Compass, DBeaver) tự động tải về và đặt vào `/Applications`.
 - Git được cài qua công cụ chính thức của Apple (`xcode-select --install`).
 - Trình cài đặt tự kiểm tra phiên bản mới nhất khi khởi động.
 
