@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Tự động chuyển thư mục** — Gõ đường dẫn thư mục rồi Enter. Không cần gõ `cd`.
 - **Màu sắc file nổi bật** — File và thư mục có màu riêng, đẹp trên cả giao diện sáng lẫn tối.
 - **Cấu hình mặc định tốt hơn** — Tab completion, lịch sử không trùng lặp, lưu tới 100.000 lệnh.
-- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Go, Node.js, Python, Rust, Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, và Google Chrome. Chọn bằng phím mũi tên.
+- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Go, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, và Google Chrome. Chọn bằng phím mũi tên.
 
 ---
 
@@ -75,6 +75,8 @@ Chạy `install-dev-tool` để mở menu tương tác.
 
 **Lưu ý thêm:**
 - Go và Node.js cài vào `~/.local/` — không cần `sudo`, kể cả khi cài npm package toàn cục.
+- Python được cài kèm `uv` (trình quản lý package & project Python tốc độ cao của Astral).
+- JDK cài đặt bản chính thức Eclipse Temurin LTS và tự cấu hình `JAVA_HOME`.
 - Ứng dụng desktop (VSCode, Claude, OrbStack, MongoDB Compass, DBeaver, Google Chrome, Android Studio, Antigravity) tự động tải về và đặt vào `/Applications`.
 - Git được cài qua công cụ chính thức của Apple (`xcode-select --install`).
 - Trình cài đặt tự kiểm tra phiên bản mới nhất khi khởi động.

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # setup-zsh Developer Tool Installer
-# Installs and updates Go, Node.js, Python, Rust, Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome on macOS.
+# Installs and updates Go, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome on macOS.
 
 # ANSI color codes
 RED='\033[0;31m'
@@ -19,11 +19,13 @@ if [ "$ARCH" = "x86_64" ]; then
     NODE_ARCH="x64"
     ORB_ARCH="amd64"
     DBEAVER_ARCH="x86_64"
+    JDK_ARCH="x64"
 else
     GO_ARCH="arm64"
     NODE_ARCH="arm64"
     ORB_ARCH="arm64"
     DBEAVER_ARCH="aarch64"
+    JDK_ARCH="aarch64"
 fi
 
 TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
@@ -52,6 +54,17 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 (
     LATEST=$(curl -s -L --compressed https://www.python.org/downloads/macos/ | grep -o 'https://www.python.org/ftp/python/[0-9.]*/python-[0-9.]*-macos11.pkg' | sort -V | tail -n 1 | cut -d/ -f6 || echo "Unknown")
     echo "$LATEST" > "$TEMP_VER_DIR/python"
+) &
+
+(
+    LATEST=$(curl -s https://formulae.brew.sh/api/formula/uv.json | grep -o '"stable":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
+    echo "$LATEST" > "$TEMP_VER_DIR/uv"
+) &
+
+(
+    LTS_VER=$(curl -s "https://api.adoptium.net/v3/info/available_releases" | grep -o '"most_recent_lts": [0-9]*' | tr -d ' ' | cut -d: -f2 || echo "21")
+    LATEST=$(curl -s "https://api.adoptium.net/v3/assets/feature_releases/${LTS_VER}/ga?architecture=${JDK_ARCH}&image_type=jdk&os=mac&vendor=eclipse" | grep -o '"release_name": "[^"]*"' | head -n 1 | cut -d'"' -f4 | sed 's/^jdk-//' || echo "Unknown")
+    echo "$LATEST" > "$TEMP_VER_DIR/jdk"
 ) &
 
 (
@@ -119,6 +132,8 @@ LATEST_NODE=$(cat "$TEMP_VER_DIR/node" 2>/dev/null || echo "Unknown")
 LATEST_ORB=$(cat "$TEMP_VER_DIR/orb" 2>/dev/null || echo "Unknown")
 LATEST_VSCODE=$(cat "$TEMP_VER_DIR/vscode" 2>/dev/null || echo "Unknown")
 LATEST_PYTHON=$(cat "$TEMP_VER_DIR/python" 2>/dev/null || echo "Unknown")
+LATEST_UV=$(cat "$TEMP_VER_DIR/uv" 2>/dev/null || echo "Unknown")
+LATEST_JDK=$(cat "$TEMP_VER_DIR/jdk" 2>/dev/null || echo "Unknown")
 LATEST_CLAUDE=$(cat "$TEMP_VER_DIR/claude" 2>/dev/null || echo "Unknown")
 LATEST_RUST=$(cat "$TEMP_VER_DIR/rust" 2>/dev/null || echo "Unknown")
 LATEST_COMPASS=$(cat "$TEMP_VER_DIR/compass" 2>/dev/null || echo "Unknown")
@@ -157,6 +172,20 @@ detect_vscode() {
 detect_python() {
     if command -v python3 &>/dev/null; then
         python3 --version 2>&1 | awk '{print $2}' || echo ""
+    fi
+}
+
+detect_uv() {
+    if [[ -x "$HOME/.local/bin/uv" ]]; then
+        "$HOME/.local/bin/uv" --version 2>/dev/null | awk '{print $2}' || echo ""
+    elif command -v uv &>/dev/null; then
+        uv --version 2>/dev/null | awk '{print $2}' || echo ""
+    fi
+}
+
+detect_jdk() {
+    if command -v java &>/dev/null; then
+        java -version 2>&1 | awk -F '"' '/version/ {print $2}' || echo ""
     fi
 }
 
@@ -223,6 +252,20 @@ format_status() {
         echo -e "${GREEN}[Installed: v$installed (Latest)]${NC}"
     else
         echo -e "${YELLOW}[Installed: v$installed -> Upgrade to v$latest]${NC}"
+    fi
+}
+
+format_python_status() {
+    local py_inst="$1"
+    local uv_inst="$2"
+    if [[ -z "$py_inst" && -z "$uv_inst" ]]; then
+        echo -e "${RED}[Not Installed]${NC}"
+    elif [[ -n "$py_inst" && -n "$uv_inst" ]]; then
+        echo -e "${GREEN}[Installed: Py v$py_inst | uv v$uv_inst]${NC}"
+    elif [[ -n "$py_inst" ]]; then
+        echo -e "${YELLOW}[Installed: Py v$py_inst | uv missing]${NC}"
+    else
+        echo -e "${YELLOW}[Installed: uv v$uv_inst | Python3 missing]${NC}"
     fi
 }
 
@@ -465,11 +508,64 @@ install_python() {
     
     rm -f "$temp_pkg"
     
+    echo -e "${BLUE}Installing uv (Python package installer v${LATEST_UV})...${NC}"
+    mkdir -p "$HOME/.local/bin"
+    if ! curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$HOME/.local/bin" sh; then
+        echo -e "${YELLOW}Warning: Failed to install uv via installer script, attempting fallback...${NC}"
+        local uv_arch="aarch64"
+        if [ "$ARCH" = "x86_64" ]; then
+            uv_arch="x86_64"
+        fi
+        local uv_url="https://github.com/astral-sh/uv/releases/download/${LATEST_UV}/uv-${uv_arch}-apple-darwin.tar.gz"
+        local temp_uv_tar=$(mktemp /tmp/uv.XXXXXX.tar.gz)
+        if curl -L --progress-bar "$uv_url" -o "$temp_uv_tar"; then
+            local temp_uv_extract=$(mktemp -d /tmp/uv_extract.XXXXXX)
+            tar -xzf "$temp_uv_tar" -C "$temp_uv_extract"
+            mv "$temp_uv_extract"/uv-${uv_arch}-apple-darwin/uv* "$HOME/.local/bin/" 2>/dev/null || true
+            rm -rf "$temp_uv_tar" "$temp_uv_extract"
+        fi
+    fi
+    
     echo "Updating env.zsh..."
-    local content="alias python=\"python3\"\nalias pip=\"pip3\""
+    local content="export PATH=\"\$HOME/.local/bin:\$PATH\"\nalias python=\"python3\"\nalias pip=\"pip3\""
     update_env_block "Python" "$content"
     
-    echo -e "${GREEN}✓ Python v${LATEST_PYTHON} installed successfully!${NC}"
+    echo -e "${GREEN}✓ Python v${LATEST_PYTHON} and uv v${LATEST_UV} installed successfully!${NC}"
+}
+
+install_jdk() {
+    echo -e "${BLUE}Installing Eclipse Temurin JDK LTS v${LATEST_JDK}...${NC}"
+    local lts_ver
+    lts_ver=$(echo "$LATEST_JDK" | cut -d. -f1)
+    [[ -z "$lts_ver" ]] && lts_ver="21"
+    local download_url
+    download_url=$(curl -s "https://api.adoptium.net/v3/assets/feature_releases/${lts_ver}/ga?architecture=${JDK_ARCH}&image_type=jdk&os=mac&vendor=eclipse" | grep -o 'https://github.com/adoptium/temurin[0-9]*-binaries/releases/download/[^"]*\.pkg' | head -n 1 || echo "")
+    if [[ -z "$download_url" ]]; then
+        echo -e "${RED}Error: Failed to resolve Temurin JDK download URL.${NC}"
+        return 1
+    fi
+    local temp_pkg=$(mktemp /tmp/jdk.XXXXXX.pkg)
+    
+    echo "Downloading ${download_url}..."
+    if ! curl -L --progress-bar "$download_url" -o "$temp_pkg"; then
+        echo -e "${RED}Error: Failed to download Temurin JDK.${NC}"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}This installation requires administrator privileges. Please enter your password when prompted.${NC}"
+    if ! sudo installer -pkg "$temp_pkg" -target /; then
+        echo -e "${RED}Error: Failed to install Temurin JDK pkg.${NC}"
+        rm -f "$temp_pkg"
+        return 1
+    fi
+    
+    rm -f "$temp_pkg"
+    
+    echo "Updating env.zsh..."
+    local content="if command -v /usr/libexec/java_home &>/dev/null; then\n  export JAVA_HOME=\"\$(/usr/libexec/java_home 2>/dev/null)\"\n  export PATH=\"\$JAVA_HOME/bin:\$PATH\"\nfi"
+    update_env_block "JDK" "$content"
+    
+    echo -e "${GREEN}✓ Eclipse Temurin JDK LTS v${LATEST_JDK} installed successfully!${NC}"
 }
 
 install_claude() {
@@ -798,13 +894,13 @@ install_antigravity() {
 }
 
 # Selection states (0 = unselected, 1 = selected)
-SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0
+SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0; SEL_15=0
 CURSOR=1
 do_install=0
 
 toggle_all() {
     local any_unselected=0
-    for i in {1..14}; do
+    for i in {1..15}; do
         eval "local val=\$SEL_$i"
         if [ "$val" -eq 0 ]; then
             any_unselected=1
@@ -812,7 +908,7 @@ toggle_all() {
         fi
     done
     
-    for i in {1..14}; do
+    for i in {1..15}; do
         if [ "$any_unselected" -eq 1 ]; then
             eval "SEL_$i=1"
         else
@@ -828,6 +924,8 @@ while true; do
     INST_ORB=$(detect_orb)
     INST_VSCODE=$(detect_vscode)
     INST_PYTHON=$(detect_python)
+    INST_UV=$(detect_uv)
+    INST_JDK=$(detect_jdk)
     INST_CLAUDE=$(detect_claude)
     INST_RUST=$(detect_rust)
     INST_GIT=$(detect_git)
@@ -849,30 +947,31 @@ while true; do
     echo -e "${PURPLE}── Languages & Runtimes ─────────────────────────${NC}"
     show_line 1 "$(show_checkbox "$SEL_1")  1) 🐹 Go (Golang)        $(format_status "$INST_GO" "$LATEST_GO")"
     show_line 2 "$(show_checkbox "$SEL_2")  2) 🟢 Node.js            $(format_status "$INST_NODE" "$LATEST_NODE")"
-    show_line 3 "$(show_checkbox "$SEL_3")  3) 🐍 Python             $(format_status "$INST_PYTHON" "$LATEST_PYTHON")"
+    show_line 3 "$(show_checkbox "$SEL_3")  3) 🐍 Python & uv        $(format_python_status "$INST_PYTHON" "$INST_UV")"
     show_line 4 "$(show_checkbox "$SEL_4")  4) 🦀 Rust               $(format_status "$INST_RUST" "$LATEST_RUST")"
+    show_line 5 "$(show_checkbox "$SEL_5")  5) ☕ JDK (Temurin LTS)  $(format_status "$INST_JDK" "$LATEST_JDK")"
     
     echo -e "${PURPLE}── Dev Tools & Infrastructure ───────────────────${NC}"
-    show_line 5 "$(show_checkbox "$SEL_5")  5) 🐙 Git                $(format_git_status "$INST_GIT")"
-    show_line 6 "$(show_checkbox "$SEL_6")  6) 🔮 OrbStack           $(format_status "$INST_ORB" "$LATEST_ORB")"
+    show_line 6 "$(show_checkbox "$SEL_6")  6) 🐙 Git                $(format_git_status "$INST_GIT")"
+    show_line 7 "$(show_checkbox "$SEL_7")  7) 🔮 OrbStack (Docker)  $(format_status "$INST_ORB" "$LATEST_ORB")"
     
     echo -e "${PURPLE}── IDEs & Editors ───────────────────────────────${NC}"
-    show_line 7 "$(show_checkbox "$SEL_7")  7) 🤖 Android Studio     $(format_status "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO")"
-    show_line 8 "$(show_checkbox "$SEL_8")  8) 🟦 VSCode             $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
+    show_line 8 "$(show_checkbox "$SEL_8")  8) 🤖 Android Studio     $(format_status "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO")"
+    show_line 9 "$(show_checkbox "$SEL_9")  9) 🟦 VSCode             $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
     
     echo -e "${PURPLE}── Database Tools ───────────────────────────────${NC}"
-    show_line 9 "$(show_checkbox "$SEL_9")  9) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
-    show_line 10 "$(show_checkbox "$SEL_10") 10) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
+    show_line 10 "$(show_checkbox "$SEL_10") 10) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
+    show_line 11 "$(show_checkbox "$SEL_11") 11) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
     
     echo -e "${PURPLE}── Applications & AI ────────────────────────────${NC}"
-    show_line 11 "$(show_checkbox "$SEL_11") 11) 🚀 Antigravity        $(format_status "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY")"
-    show_line 12 "$(show_checkbox "$SEL_12") 12) 💥 Claude             $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
-    show_line 13 "$(show_checkbox "$SEL_13") 13) 🧠 Codex              $(format_status "$INST_CODEX" "$LATEST_CODEX")"
-    show_line 14 "$(show_checkbox "$SEL_14") 14) 🌐 Google Chrome      $(format_status "$INST_CHROME" "$LATEST_CHROME")"
+    show_line 12 "$(show_checkbox "$SEL_12") 12) 🚀 Antigravity        $(format_status "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY")"
+    show_line 13 "$(show_checkbox "$SEL_13") 13) 💥 Claude             $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
+    show_line 14 "$(show_checkbox "$SEL_14") 14) 🧠 Codex              $(format_status "$INST_CODEX" "$LATEST_CODEX")"
+    show_line 15 "$(show_checkbox "$SEL_15") 15) 🌐 Google Chrome      $(format_status "$INST_CHROME" "$LATEST_CHROME")"
     echo ""
-    show_line 15 "[I] Install Selected Tools"
-    show_line 16 "[A] Toggle All"
-    show_line 17 "[E] Exit"
+    show_line 16 "[I] Install Selected Tools"
+    show_line 17 "[A] Toggle All"
+    show_line 18 "[E] Exit"
     echo -e "${BLUE}==================================================${NC}"
     
     # Read one character (escape sequences check)
@@ -904,23 +1003,23 @@ while true; do
         UP)
             CURSOR=$((CURSOR - 1))
             if [ "$CURSOR" -lt 1 ]; then
-                CURSOR=17
+                CURSOR=18
             fi
             ;;
         DOWN)
             CURSOR=$((CURSOR + 1))
-            if [ "$CURSOR" -gt 17 ]; then
+            if [ "$CURSOR" -gt 18 ]; then
                 CURSOR=1
             fi
             ;;
         SPACE|ENTER)
-            if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 14 ]; then
+            if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 15 ]; then
                 eval "SEL_$CURSOR=\$((1 - SEL_$CURSOR))"
-            elif [ "$CURSOR" -eq 15 ]; then
-                do_install=1
             elif [ "$CURSOR" -eq 16 ]; then
-                toggle_all
+                do_install=1
             elif [ "$CURSOR" -eq 17 ]; then
+                toggle_all
+            elif [ "$CURSOR" -eq 18 ]; then
                 echo -e "\n${BLUE}Goodbye!${NC}"
                 exit 0
             fi
@@ -946,7 +1045,7 @@ while true; do
         
         # Count selected tools
         count=0
-        for i in {1..14}; do
+        for i in {1..15}; do
             eval "val=\$SEL_$i"
             if [ "$val" -eq 1 ]; then
                 count=$((count + 1))
@@ -954,7 +1053,7 @@ while true; do
         done
         
         if [ "$count" -eq 0 ]; then
-            echo -e "\n${YELLOW}No tools selected. Use Up/Down + Space or numbers 1-9 to select.${NC}"
+            echo -e "\n${YELLOW}No tools selected. Use Up/Down + Space or numbers to select.${NC}"
             echo -e "\nPress Enter to continue..."
             read -r
             continue
@@ -982,10 +1081,10 @@ while true; do
             echo ""
         fi
         
-        # 3. Python
+        # 3. Python & uv
         if [ "$SEL_3" -eq 1 ]; then
-            if [[ "$INST_PYTHON" == "$LATEST_PYTHON" ]] && ! confirm_reinstall "Python" "$LATEST_PYTHON"; then
-                echo "Skipping Python."
+            if [[ -n "$INST_PYTHON" && -n "$INST_UV" ]] && ! confirm_reinstall "Python & uv" "$LATEST_PYTHON"; then
+                echo "Skipping Python & uv."
             else
                 install_python
             fi
@@ -1002,14 +1101,24 @@ while true; do
             echo ""
         fi
         
-        # 5. Git
+        # 5. JDK (Eclipse Temurin LTS)
         if [ "$SEL_5" -eq 1 ]; then
+            if [[ "$INST_JDK" == "$LATEST_JDK" ]] && ! confirm_reinstall "Eclipse Temurin JDK LTS" "$LATEST_JDK"; then
+                echo "Skipping Eclipse Temurin JDK LTS."
+            else
+                install_jdk
+            fi
+            echo ""
+        fi
+        
+        # 6. Git
+        if [ "$SEL_6" -eq 1 ]; then
             install_git
             echo ""
         fi
         
-        # 6. OrbStack
-        if [ "$SEL_6" -eq 1 ]; then
+        # 7. OrbStack
+        if [ "$SEL_7" -eq 1 ]; then
             if [[ "$INST_ORB" == "$LATEST_ORB" ]] && ! confirm_reinstall "OrbStack" "$LATEST_ORB"; then
                 echo "Skipping OrbStack."
             else
@@ -1018,8 +1127,8 @@ while true; do
             echo ""
         fi
         
-        # 7. Android Studio
-        if [ "$SEL_7" -eq 1 ]; then
+        # 8. Android Studio
+        if [ "$SEL_8" -eq 1 ]; then
             if [[ "$INST_ANDROID_STUDIO" == "$LATEST_ANDROID_STUDIO" ]] && ! confirm_reinstall "Android Studio" "$LATEST_ANDROID_STUDIO"; then
                 echo "Skipping Android Studio."
             else
@@ -1028,8 +1137,8 @@ while true; do
             echo ""
         fi
         
-        # 8. VSCode
-        if [ "$SEL_8" -eq 1 ]; then
+        # 9. VSCode
+        if [ "$SEL_9" -eq 1 ]; then
             if [[ "$INST_VSCODE" == "$LATEST_VSCODE" ]] && ! confirm_reinstall "VSCode" "$LATEST_VSCODE"; then
                 echo "Skipping VSCode."
             else
@@ -1038,8 +1147,8 @@ while true; do
             echo ""
         fi
         
-        # 9. DBeaver
-        if [ "$SEL_9" -eq 1 ]; then
+        # 10. DBeaver
+        if [ "$SEL_10" -eq 1 ]; then
             if [[ "$INST_DBEAVER" == "$LATEST_DBEAVER" ]] && ! confirm_reinstall "DBeaver Community Edition" "$LATEST_DBEAVER"; then
                 echo "Skipping DBeaver Community Edition."
             else
@@ -1048,8 +1157,8 @@ while true; do
             echo ""
         fi
         
-        # 10. MongoDB Compass
-        if [ "$SEL_10" -eq 1 ]; then
+        # 11. MongoDB Compass
+        if [ "$SEL_11" -eq 1 ]; then
             if [[ "$INST_COMPASS" == "$LATEST_COMPASS" ]] && ! confirm_reinstall "MongoDB Compass" "$LATEST_COMPASS"; then
                 echo "Skipping MongoDB Compass."
             else
@@ -1058,8 +1167,8 @@ while true; do
             echo ""
         fi
         
-        # 11. Antigravity
-        if [ "$SEL_11" -eq 1 ]; then
+        # 12. Antigravity
+        if [ "$SEL_12" -eq 1 ]; then
             if [[ "$INST_ANTIGRAVITY" == "$LATEST_ANTIGRAVITY" ]] && ! confirm_reinstall "Antigravity" "$LATEST_ANTIGRAVITY"; then
                 echo "Skipping Antigravity."
             else
@@ -1068,8 +1177,8 @@ while true; do
             echo ""
         fi
         
-        # 12. Claude
-        if [ "$SEL_12" -eq 1 ]; then
+        # 13. Claude
+        if [ "$SEL_13" -eq 1 ]; then
             if [[ "$INST_CLAUDE" == "$LATEST_CLAUDE" ]] && ! confirm_reinstall "Claude" "$LATEST_CLAUDE"; then
                 echo "Skipping Claude."
             else
@@ -1078,8 +1187,8 @@ while true; do
             echo ""
         fi
         
-        # 13. Codex
-        if [ "$SEL_13" -eq 1 ]; then
+        # 14. Codex
+        if [ "$SEL_14" -eq 1 ]; then
             if [[ "$INST_CODEX" == "$LATEST_CODEX" ]] && ! confirm_reinstall "Codex" "$LATEST_CODEX"; then
                 echo "Skipping Codex."
             else
@@ -1088,8 +1197,8 @@ while true; do
             echo ""
         fi
         
-        # 14. Google Chrome
-        if [ "$SEL_14" -eq 1 ]; then
+        # 15. Google Chrome
+        if [ "$SEL_15" -eq 1 ]; then
             if [[ "$INST_CHROME" == "$LATEST_CHROME" ]] && ! confirm_reinstall "Google Chrome" "$LATEST_CHROME"; then
                 echo "Skipping Google Chrome."
             else
@@ -1099,7 +1208,7 @@ while true; do
         fi
         
         # Reset selections after installation
-        SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0
+        SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0; SEL_15=0
         
         echo -e "${GREEN}Batch installation completed!${NC}"
         echo -e "Please run ${YELLOW}source ~/.zshrc${NC} to load environment changes."

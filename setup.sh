@@ -140,10 +140,16 @@ if [[ -d "/Applications/Visual Studio Code.app/Contents/Resources/app/bin" ]] &&
 	_update_env_block "VSCode" "export PATH=\"/Applications/Visual Studio Code.app/Contents/Resources/app/bin:\$PATH\""
 fi
 
-# Python aliases
-if command -v python3 &>/dev/null && _needs_env_block "Python"; then
-	echo -e "${BLUE}Detected Python3, adding aliases...${NC}"
-	_update_env_block "Python" "alias python=\"python3\"\nalias pip=\"pip3\""
+# Python aliases & uv
+if (command -v python3 &>/dev/null || command -v uv &>/dev/null || [[ -x "$HOME/.local/bin/uv" ]]) && _needs_env_block "Python"; then
+	echo -e "${BLUE}Detected Python3 / uv, adding PATH and aliases...${NC}"
+	_update_env_block "Python" "export PATH=\"\$HOME/.local/bin:\$PATH\"\nalias python=\"python3\"\nalias pip=\"pip3\""
+fi
+
+# JDK (Eclipse Temurin LTS)
+if command -v /usr/libexec/java_home &>/dev/null && /usr/libexec/java_home &>/dev/null && _needs_env_block "JDK"; then
+	echo -e "${BLUE}Detected Java JDK, adding JAVA_HOME...${NC}"
+	_update_env_block "JDK" "if command -v /usr/libexec/java_home &>/dev/null; then\n  export JAVA_HOME=\"\$(/usr/libexec/java_home 2>/dev/null)\"\n  export PATH=\"\$JAVA_HOME/bin:\$PATH\"\nfi"
 fi
 
 # Android Studio / SDK
