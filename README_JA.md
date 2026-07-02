@@ -72,8 +72,9 @@ source ~/.zshrc
 - **移動**: **上 / 下** 矢印キーでカーソル（`❯`）を移動。
 - **ツール選択**: **スペース** または **Enter** でチェック/解除（`[ ]` ↔ `[✓]`）。
 - **インストール**: `[I] Install Selected Tools` に移動して **Enter** を押す（または `I` と入力）。
-- **全選択**: `[A] Toggle All` で **Enter** を押す。
-- **終了**: `[E] Exit` で **Enter** を押す。
+- **全選択**: `[A] Toggle All` で **Enter** を押す（または `A` と入力）。
+- **更新が必要な全ツール選択**: `[U] Select Outdated Tools` で **Enter** を押す（または `U` と入力）、またはターミナルから直接 `install-dev-tool --update-all` を実行。
+- **終了**: `[E] Exit` で **Enter** を押す（または `E` と入力）。
 
 **知っておくと便利:**
 - Go と Node.js は `~/.local/` にインストールされます。グローバル npm パッケージのインストールでも `sudo` は不要です。

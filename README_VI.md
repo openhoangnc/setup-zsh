@@ -72,8 +72,9 @@ Chạy `install-dev-tool` để mở menu tương tác.
 - **Di chuyển**: Dùng phím **Lên / Xuống** để di chuyển con trỏ (`❯`).
 - **Chọn công cụ**: Nhấn **Space** hoặc **Enter** để đánh dấu chọn (`[ ]` ↔ `[✓]`).
 - **Cài đặt**: Chuyển đến `[I] Install Selected Tools` rồi nhấn **Enter** (hoặc gõ `I`).
-- **Chọn tất cả**: Nhấn **Enter** trên `[A] Toggle All`.
-- **Thoát**: Nhấn **Enter** trên `[E] Exit`.
+- **Chọn tất cả**: Nhấn **Enter** trên `[A] Toggle All` (hoặc gõ `A`).
+- **Cập nhật tất cả bản cũ**: Nhấn **Enter** trên `[U] Select Outdated Tools` (hoặc gõ `U`), hoặc chạy `install-dev-tool --update-all` trực tiếp từ terminal.
+- **Thoát**: Nhấn **Enter** trên `[E] Exit` (hoặc gõ `E`).
 
 **Lưu ý thêm:**
 - Go và Node.js cài vào `~/.local/` — không cần `sudo`, kể cả khi cài npm package toàn cục.

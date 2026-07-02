@@ -72,8 +72,9 @@ Run `install-dev-tool` to open an interactive menu.
 - **Navigate**: Use **Up / Down** arrow keys to move the cursor (`❯`).
 - **Select tools**: Press **Space** or **Enter** to check/uncheck a tool (`[ ]` ↔ `[✓]`).
 - **Install**: Move to `[I] Install Selected Tools` and press **Enter** (or type `I`).
-- **Select all**: Press **Enter** on `[A] Toggle All`.
-- **Quit**: Press **Enter** on `[E] Exit`.
+- **Select all**: Press **Enter** on `[A] Toggle All` (or type `A`).
+- **Update all outdated**: Press **Enter** on `[U] Select Outdated Tools` (or type `U`), or run `install-dev-tool --update-all` directly from your terminal.
+- **Quit**: Press **Enter** on `[E] Exit` (or type `E`).
 
 **Good to know:**
 - Go and Node.js install to `~/.local/` — no `sudo` needed, even for global npm packages.

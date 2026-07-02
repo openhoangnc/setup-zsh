@@ -961,6 +961,52 @@ toggle_all() {
     done
 }
 
+select_outdated() {
+    for i in {1..15}; do
+        eval "SEL_$i=0"
+    done
+    [[ -n "$INST_GO" && "$INST_GO" != "$LATEST_GO" ]] && SEL_1=1
+    [[ -n "$INST_NODE" && "$INST_NODE" != "$LATEST_NODE" ]] && SEL_2=1
+    if [[ -n "$INST_PYTHON" || -n "$INST_UV" ]]; then
+        if [[ "$INST_PYTHON" != "$LATEST_PYTHON" || "$INST_UV" != "$LATEST_UV" || -z "$INST_PYTHON" || -z "$INST_UV" ]]; then
+            SEL_3=1
+        fi
+    fi
+    [[ -n "$INST_RUST" && "$INST_RUST" != "$LATEST_RUST" ]] && SEL_4=1
+    [[ -n "$INST_JDK" && "$INST_JDK" != "$LATEST_JDK" ]] && SEL_5=1
+    [[ -n "$INST_ORB" && "$INST_ORB" != "$LATEST_ORB" ]] && SEL_7=1
+    [[ -n "$INST_ANDROID_STUDIO" && "$INST_ANDROID_STUDIO" != "$LATEST_ANDROID_STUDIO" ]] && SEL_8=1
+    [[ -n "$INST_VSCODE" && "$INST_VSCODE" != "$LATEST_VSCODE" ]] && SEL_9=1
+    [[ -n "$INST_DBEAVER" && "$INST_DBEAVER" != "$LATEST_DBEAVER" ]] && SEL_10=1
+    [[ -n "$INST_COMPASS" && "$INST_COMPASS" != "$LATEST_COMPASS" ]] && SEL_11=1
+    [[ -n "$INST_ANTIGRAVITY" && "$INST_ANTIGRAVITY" != "$LATEST_ANTIGRAVITY" ]] && SEL_12=1
+    [[ -n "$INST_CLAUDE" && "$INST_CLAUDE" != "$LATEST_CLAUDE" ]] && SEL_13=1
+    [[ -n "$INST_CODEX" && "$INST_CODEX" != "$LATEST_CODEX" ]] && SEL_14=1
+    [[ -n "$INST_CHROME" && "$INST_CHROME" != "$LATEST_CHROME" ]] && SEL_15=1
+}
+
+has_outdated_tools() {
+    [[ -n "$INST_GO" && "$INST_GO" != "$LATEST_GO" ]] && return 0
+    [[ -n "$INST_NODE" && "$INST_NODE" != "$LATEST_NODE" ]] && return 0
+    if [[ -n "$INST_PYTHON" || -n "$INST_UV" ]]; then
+        if [[ "$INST_PYTHON" != "$LATEST_PYTHON" || "$INST_UV" != "$LATEST_UV" || -z "$INST_PYTHON" || -z "$INST_UV" ]]; then
+            return 0
+        fi
+    fi
+    [[ -n "$INST_RUST" && "$INST_RUST" != "$LATEST_RUST" ]] && return 0
+    [[ -n "$INST_JDK" && "$INST_JDK" != "$LATEST_JDK" ]] && return 0
+    [[ -n "$INST_ORB" && "$INST_ORB" != "$LATEST_ORB" ]] && return 0
+    [[ -n "$INST_ANDROID_STUDIO" && "$INST_ANDROID_STUDIO" != "$LATEST_ANDROID_STUDIO" ]] && return 0
+    [[ -n "$INST_VSCODE" && "$INST_VSCODE" != "$LATEST_VSCODE" ]] && return 0
+    [[ -n "$INST_DBEAVER" && "$INST_DBEAVER" != "$LATEST_DBEAVER" ]] && return 0
+    [[ -n "$INST_COMPASS" && "$INST_COMPASS" != "$LATEST_COMPASS" ]] && return 0
+    [[ -n "$INST_ANTIGRAVITY" && "$INST_ANTIGRAVITY" != "$LATEST_ANTIGRAVITY" ]] && return 0
+    [[ -n "$INST_CLAUDE" && "$INST_CLAUDE" != "$LATEST_CLAUDE" ]] && return 0
+    [[ -n "$INST_CODEX" && "$INST_CODEX" != "$LATEST_CODEX" ]] && return 0
+    [[ -n "$INST_CHROME" && "$INST_CHROME" != "$LATEST_CHROME" ]] && return 0
+    return 1
+}
+
 refresh_installed_tools() {
     INST_GO=$(detect_go)
     INST_NODE=$(detect_node)
@@ -986,110 +1032,146 @@ cleanup_cursor() {
 trap cleanup_cursor EXIT INT TERM
 
 refresh_installed_tools
-printf "\033[?25l"
+
+# Handle CLI flags (e.g. --update-all, update-all, -u)
+if [[ "$1" == "--update-all" || "$1" == "update-all" || "$1" == "-u" || "$1" == "--all" || "$1" == "-a" ]]; then
+    select_outdated
+    do_install=1
+else
+    printf "\033[?25l"
+fi
 
 # Main loop
 while true; do
-    # Buffer entire menu, then flush at once to avoid flicker
-    menu_buf=$(
-        echo -e "${BLUE}==================================================${NC}\033[K"
-        echo -e "${BLUE}        🛠️  setup-zsh Developer Tool Installer${NC}\033[K"
-        echo -e "${BLUE}==================================================${NC}\033[K"
-        echo -e "Use Up/Down arrows to navigate, Space/Enter to toggle selections.\033[K"
-        echo ""
-        echo -e "${PURPLE}── Languages & Runtimes ─────────────────────────${NC}\033[K"
-        show_line 1 "$(show_checkbox "$SEL_1")  1) 🐹 Go (Golang)        $(format_status "$INST_GO" "$LATEST_GO")"
-        show_line 2 "$(show_checkbox "$SEL_2")  2) 🟢 Node.js            $(format_status "$INST_NODE" "$LATEST_NODE")"
-        show_line 3 "$(show_checkbox "$SEL_3")  3) 🐍 Python & uv        $(format_python_status "$INST_PYTHON" "$INST_UV")"
-        show_line 4 "$(show_checkbox "$SEL_4")  4) 🦀 Rust               $(format_status "$INST_RUST" "$LATEST_RUST")"
-        show_line 5 "$(show_checkbox "$SEL_5")  5) ☕ JDK (Temurin LTS)  $(format_status "$INST_JDK" "$LATEST_JDK")"
-        echo -e "${PURPLE}── Dev Tools & Infrastructure ───────────────────${NC}\033[K"
-        show_line 6 "$(show_checkbox "$SEL_6")  6) 🐙 Git                $(format_git_status "$INST_GIT")"
-        show_line 7 "$(show_checkbox "$SEL_7")  7) 🔮 OrbStack (Docker)  $(format_status "$INST_ORB" "$LATEST_ORB")"
-        echo -e "${PURPLE}── IDEs & Editors ───────────────────────────────${NC}\033[K"
-        show_line 8 "$(show_checkbox "$SEL_8")  8) 🤖 Android Studio     $(format_status "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO")"
-        show_line 9 "$(show_checkbox "$SEL_9")  9) 🟦 VSCode             $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
-        echo -e "${PURPLE}── Database Tools ───────────────────────────────${NC}\033[K"
-        show_line 10 "$(show_checkbox "$SEL_10") 10) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
-        show_line 11 "$(show_checkbox "$SEL_11") 11) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
-        echo -e "${PURPLE}── Applications & AI ────────────────────────────${NC}\033[K"
-        show_line 12 "$(show_checkbox "$SEL_12") 12) 🚀 Antigravity        $(format_status "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY")"
-        show_line 13 "$(show_checkbox "$SEL_13") 13) 💥 Claude             $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
-        show_line 14 "$(show_checkbox "$SEL_14") 14) 🧠 Codex              $(format_status "$INST_CODEX" "$LATEST_CODEX")"
-        show_line 15 "$(show_checkbox "$SEL_15") 15) 🌐 Google Chrome      $(format_status "$INST_CHROME" "$LATEST_CHROME")"
-        echo -e "\033[K"
-        show_line 16 "[I] Install Selected Tools"
-        show_line 17 "[A] Toggle All"
-        show_line 18 "[E] Exit"
-        echo -e "${BLUE}==================================================${NC}\033[K"
-    )
-    printf '\033[2J\033[3J\033[H%s\n' "$menu_buf"
-    
-    # Read one character (escape sequences check)
-    IFS= read -r -s -n 1 key 2>/dev/null
-    action=""
-    
-    if [[ "$key" = $'\e' ]]; then
-        read -r -s -n 2 -t 1 next_chars 2>/dev/null
-        if [[ "$next_chars" = "[A" || "$next_chars" = "OA" ]]; then
-            action="UP"
-        elif [[ "$next_chars" = "[B" || "$next_chars" = "OB" ]]; then
-            action="DOWN"
+    if [ "$do_install" -eq 0 ]; then
+        local max_cursor=18
+        if has_outdated_tools; then
+            max_cursor=19
         fi
-    elif [[ "$key" = " " ]]; then
-        action="SPACE"
-    elif [[ -z "$key" ]]; then
-        action="ENTER"
-    elif [[ "$key" = "i" || "$key" = "I" ]]; then
-        action="INSTALL"
-    elif [[ "$key" = "a" || "$key" = "A" ]]; then
-        action="ALL"
-    elif [[ "$key" = "e" || "$key" = "E" || "$key" = "q" || "$key" = "Q" ]]; then
-        action="EXIT"
-    elif [[ "$key" =~ ^[1-9]$ ]]; then
-        action="NUM_$key"
-    fi
-    
-    case "$action" in
-        UP)
-            CURSOR=$((CURSOR - 1))
-            if [ "$CURSOR" -lt 1 ]; then
-                CURSOR=18
+        if [ "$CURSOR" -gt "$max_cursor" ]; then
+            CURSOR=$max_cursor
+        fi
+
+        # Buffer entire menu, then flush at once to avoid flicker
+        menu_buf=$(
+            echo -e "${BLUE}==================================================${NC}\033[K"
+            echo -e "${BLUE}        🛠️  setup-zsh Developer Tool Installer${NC}\033[K"
+            echo -e "${BLUE}==================================================${NC}\033[K"
+            echo -e "Use Up/Down arrows to navigate, Space/Enter to toggle selections.\033[K"
+            echo ""
+            echo -e "${PURPLE}── Languages & Runtimes ─────────────────────────${NC}\033[K"
+            show_line 1 "$(show_checkbox "$SEL_1")  1) 🐹 Go (Golang)        $(format_status "$INST_GO" "$LATEST_GO")"
+            show_line 2 "$(show_checkbox "$SEL_2")  2) 🟢 Node.js            $(format_status "$INST_NODE" "$LATEST_NODE")"
+            show_line 3 "$(show_checkbox "$SEL_3")  3) 🐍 Python & uv        $(format_python_status "$INST_PYTHON" "$INST_UV")"
+            show_line 4 "$(show_checkbox "$SEL_4")  4) 🦀 Rust               $(format_status "$INST_RUST" "$LATEST_RUST")"
+            show_line 5 "$(show_checkbox "$SEL_5")  5) ☕ JDK (Temurin LTS)  $(format_status "$INST_JDK" "$LATEST_JDK")"
+            echo -e "${PURPLE}── Dev Tools & Infrastructure ───────────────────${NC}\033[K"
+            show_line 6 "$(show_checkbox "$SEL_6")  6) 🐙 Git                $(format_git_status "$INST_GIT")"
+            show_line 7 "$(show_checkbox "$SEL_7")  7) 🔮 OrbStack (Docker)  $(format_status "$INST_ORB" "$LATEST_ORB")"
+            echo -e "${PURPLE}── IDEs & Editors ───────────────────────────────${NC}\033[K"
+            show_line 8 "$(show_checkbox "$SEL_8")  8) 🤖 Android Studio     $(format_status "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO")"
+            show_line 9 "$(show_checkbox "$SEL_9")  9) 🟦 VSCode             $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
+            echo -e "${PURPLE}── Database Tools ───────────────────────────────${NC}\033[K"
+            show_line 10 "$(show_checkbox "$SEL_10") 10) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
+            show_line 11 "$(show_checkbox "$SEL_11") 11) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
+            echo -e "${PURPLE}── Applications & AI ────────────────────────────${NC}\033[K"
+            show_line 12 "$(show_checkbox "$SEL_12") 12) 🚀 Antigravity        $(format_status "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY")"
+            show_line 13 "$(show_checkbox "$SEL_13") 13) 💥 Claude             $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
+            show_line 14 "$(show_checkbox "$SEL_14") 14) 🧠 Codex              $(format_status "$INST_CODEX" "$LATEST_CODEX")"
+            show_line 15 "$(show_checkbox "$SEL_15") 15) 🌐 Google Chrome      $(format_status "$INST_CHROME" "$LATEST_CHROME")"
+            echo -e "\033[K"
+            show_line 16 "[I] Install Selected Tools"
+            show_line 17 "[A] Toggle All"
+            if has_outdated_tools; then
+                show_line 18 "[U] Select Outdated Tools"
+                show_line 19 "[E] Exit"
+            else
+                show_line 18 "[E] Exit"
             fi
-            ;;
-        DOWN)
-            CURSOR=$((CURSOR + 1))
-            if [ "$CURSOR" -gt 18 ]; then
-                CURSOR=1
+            echo -e "${BLUE}==================================================${NC}\033[K"
+        )
+        printf '\033[2J\033[3J\033[H%s\n' "$menu_buf"
+        
+        # Read one character (escape sequences check)
+        IFS= read -r -s -n 1 key 2>/dev/null
+        action=""
+        
+        if [[ "$key" = $'\e' ]]; then
+            read -r -s -n 2 -t 1 next_chars 2>/dev/null
+            if [[ "$next_chars" = "[A" || "$next_chars" = "OA" ]]; then
+                action="UP"
+            elif [[ "$next_chars" = "[B" || "$next_chars" = "OB" ]]; then
+                action="DOWN"
             fi
-            ;;
-        SPACE|ENTER)
-            if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 15 ]; then
-                eval "SEL_$CURSOR=\$((1 - SEL_$CURSOR))"
-            elif [ "$CURSOR" -eq 16 ]; then
+        elif [[ "$key" = " " ]]; then
+            action="SPACE"
+        elif [[ -z "$key" ]]; then
+            action="ENTER"
+        elif [[ "$key" = "i" || "$key" = "I" ]]; then
+            action="INSTALL"
+        elif [[ "$key" = "a" || "$key" = "A" ]]; then
+            action="ALL"
+        elif [[ "$key" = "u" || "$key" = "U" ]]; then
+            if has_outdated_tools; then
+                action="OUTDATED"
+            fi
+        elif [[ "$key" = "e" || "$key" = "E" || "$key" = "q" || "$key" = "Q" ]]; then
+            action="EXIT"
+        elif [[ "$key" =~ ^[1-9]$ ]]; then
+            action="NUM_$key"
+        fi
+        
+        case "$action" in
+            UP)
+                CURSOR=$((CURSOR - 1))
+                if [ "$CURSOR" -lt 1 ]; then
+                    CURSOR=$max_cursor
+                fi
+                ;;
+            DOWN)
+                CURSOR=$((CURSOR + 1))
+                if [ "$CURSOR" -gt "$max_cursor" ]; then
+                    CURSOR=1
+                fi
+                ;;
+            SPACE|ENTER)
+                if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 15 ]; then
+                    eval "SEL_$CURSOR=\$((1 - SEL_$CURSOR))"
+                elif [ "$CURSOR" -eq 16 ]; then
+                    do_install=1
+                elif [ "$CURSOR" -eq 17 ]; then
+                    toggle_all
+                elif [ "$CURSOR" -eq 18 ]; then
+                    if has_outdated_tools; then
+                        select_outdated
+                    else
+                        echo -e "\n${BLUE}Goodbye!${NC}"
+                        exit 0
+                    fi
+                elif [ "$CURSOR" -eq 19 ]; then
+                    echo -e "\n${BLUE}Goodbye!${NC}"
+                    exit 0
+                fi
+                ;;
+            NUM_*)
+                num="${action#NUM_}"
+                eval "SEL_$num=\$((1 - SEL_$num))"
+                ;;
+            INSTALL)
                 do_install=1
-            elif [ "$CURSOR" -eq 17 ]; then
+                ;;
+            ALL)
                 toggle_all
-            elif [ "$CURSOR" -eq 18 ]; then
+                ;;
+            OUTDATED)
+                select_outdated
+                ;;
+            EXIT)
                 echo -e "\n${BLUE}Goodbye!${NC}"
                 exit 0
-            fi
-            ;;
-        NUM_*)
-            num="${action#NUM_}"
-            eval "SEL_$num=\$((1 - SEL_$num))"
-            ;;
-        INSTALL)
-            do_install=1
-            ;;
-        ALL)
-            toggle_all
-            ;;
-        EXIT)
-            echo -e "\n${BLUE}Goodbye!${NC}"
-            exit 0
-            ;;
-    esac
+                ;;
+        esac
+    fi
     
     if [ "$do_install" -eq 1 ]; then
         do_install=0 # Reset flag
