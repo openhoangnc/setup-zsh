@@ -195,6 +195,7 @@ SAVEHIST=100000
 setopt APPEND_HISTORY
 setopt SHARE_HISTORY
 setopt HIST_IGNORE_DUPS
+setopt HIST_FIND_NO_DUPS
 setopt HIST_IGNORE_SPACE
 setopt HIST_REDUCE_BLANKS
 setopt HIST_VERIFY
@@ -214,6 +215,9 @@ fi
 # 3. History Substring Search (Cycle matches with Up/Down Arrows)
 if [[ -f ~/.zsh/setup-zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh ]]; then
 	source ~/.zsh/setup-zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
+
+	# Ensure all unique matching history entries are found
+	HISTORY_SUBSTRING_SEARCH_ENSURE_UNIQUE=1
 
 	# Bind arrow keys for history substring search
 	bindkey '^[[A' history-substring-search-up
