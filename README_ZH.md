@@ -67,6 +67,8 @@ source ~/.zshrc
 
 运行 `install-dev-tool` 打开交互菜单。
 
+![install-dev-tool](install-dev-tool.png)
+
 - **导航**：用 **上/下方向键** 移动光标（`❯`）。
 - **选择工具**：按 **空格键** 或 **回车** 勾选/取消（`[ ]` ↔ `[✓]`）。
 - **安装**：移到 `[I] Install Selected Tools` 按 **回车**（或输入 `I`）。

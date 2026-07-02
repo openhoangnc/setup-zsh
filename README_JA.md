@@ -67,6 +67,8 @@ source ~/.zshrc
 
 `install-dev-tool` を実行してインタラクティブメニューを開きます。
 
+![install-dev-tool](install-dev-tool.png)
+
 - **移動**: **上 / 下** 矢印キーでカーソル（`❯`）を移動。
 - **ツール選択**: **スペース** または **Enter** でチェック/解除（`[ ]` ↔ `[✓]`）。
 - **インストール**: `[I] Install Selected Tools` に移動して **Enter** を押す（または `I` と入力）。

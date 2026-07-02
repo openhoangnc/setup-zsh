@@ -67,6 +67,8 @@ Just type a path and press Enter:
 
 Run `install-dev-tool` to open an interactive menu.
 
+![install-dev-tool](install-dev-tool.png)
+
 - **Navigate**: Use **Up / Down** arrow keys to move the cursor (`❯`).
 - **Select tools**: Press **Space** or **Enter** to check/uncheck a tool (`[ ]` ↔ `[✓]`).
 - **Install**: Move to `[I] Install Selected Tools` and press **Enter** (or type `I`).

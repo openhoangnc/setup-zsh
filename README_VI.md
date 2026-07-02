@@ -67,6 +67,8 @@ Gõ đường dẫn rồi nhấn Enter:
 
 Chạy `install-dev-tool` để mở menu tương tác.
 
+![install-dev-tool](install-dev-tool.png)
+
 - **Di chuyển**: Dùng phím **Lên / Xuống** để di chuyển con trỏ (`❯`).
 - **Chọn công cụ**: Nhấn **Space** hoặc **Enter** để đánh dấu chọn (`[ ]` ↔ `[✓]`).
 - **Cài đặt**: Chuyển đến `[I] Install Selected Tools` rồi nhấn **Enter** (hoặc gõ `I`).
