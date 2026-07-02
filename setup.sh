@@ -236,8 +236,6 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 	# Configure strategies (try match_any first, fallback to completion)
 	ZSH_AUTOSUGGEST_STRATEGY=(match_any completion)
 
-	# Bind Tab key (^I) to accept autosuggestion if present, otherwise do tab-completion
-	bindkey '^I' autosuggest-accept
 
 	# -------------------------------------------------------------
 	# 5. Custom Match-Any (Substring) Strategy and Widgets
