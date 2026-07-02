@@ -1,6 +1,6 @@
 # setup-zsh
 
-🌐 [English](README.md) | [Tiếng Việt](README_VI.md) | [简体中文](README_ZH.md)
+🌐 [English](README.md) | [Tiếng Việt](README_VI.md) | [简体中文](README_ZH.md) | [日本語](README_JA.md)
 
 Bộ cấu hình Zsh nhẹ cho macOS. Thêm highlight cú pháp, tô màu danh sách file, prompt đẹp, và **gợi ý lệnh thông minh khớp bất kỳ phần nào trong lịch sử**.
 

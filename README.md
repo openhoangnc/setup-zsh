@@ -1,6 +1,6 @@
 # setup-zsh
 
-🌐 [English](README.md) | [Tiếng Việt](README_VI.md) | [简体中文](README_ZH.md)
+🌐 [English](README.md) | [Tiếng Việt](README_VI.md) | [简体中文](README_ZH.md) | [日本語](README_JA.md)
 
 A lightweight Zsh setup for macOS. It gives you syntax highlighting, colorful file listings, a clean prompt, and **smart autosuggestions that match any part of your command history**.
 

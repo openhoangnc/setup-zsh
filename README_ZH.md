@@ -1,6 +1,6 @@
 # setup-zsh
 
-🌐 [English](README.md) | [Tiếng Việt](README_VI.md) | [简体中文](README_ZH.md)
+🌐 [English](README.md) | [Tiếng Việt](README_VI.md) | [简体中文](README_ZH.md) | [日本語](README_JA.md)
 
 一个轻量的 macOS Zsh 配置工具。自带语法高亮、彩色文件列表、简洁的提示符，以及**能匹配历史记录中任意位置的智能补全建议**。
 
