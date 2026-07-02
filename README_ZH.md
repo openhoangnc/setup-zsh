@@ -33,7 +33,7 @@ source ~/.zshrc
 - **自动切换目录** — 直接输入路径按回车，不用打 `cd`。
 - **彩色文件列表** — 文件和目录有各自的颜色，深色和浅色背景都好看。
 - **更好的默认设置** — Tab 补全、历史记录去重、最多保存 100,000 条命令。
-- **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Go、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude 和 Google Chrome。用方向键选择即可。
+- **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Bun、Go、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude 和 Google Chrome。用方向键选择即可。
 
 ---
 
@@ -69,14 +69,16 @@ source ~/.zshrc
 
 ![install-dev-tool](install-dev-tool.png)
 
-- **导航**：用 **上/下方向键** 移动光标（`❯`）。
+- **导航**：用 **上 / 下 / 左 / 右 方向键** 移动光标（`❯`）。
 - **选择工具**：按 **空格键** 或 **回车** 勾选/取消（`[ ]` ↔ `[✓]`）。
-- **安装**：移到 `[I] Install Selected Tools` 按 **回车**（或输入 `I`）。
-- **全选**：在 `[A] Toggle All` 上按 **回车**（或输入 `A`）。
-- **选择所有需要更新的工具**：在 `[U] Select Outdated Tools` 上按 **回车**（或输入 `U`），或在终端直接运行 `install-dev-tool --update-all`。
-- **退出**：在 `[E] Exit` 上按 **回车**（或输入 `E`）。
+- **操作选项（底部单行展示）**：
+  - **安装**：移到 `[I] Install` 按 **回车**（或输入 `I`）。
+  - **全选**：移到 `[A] Toggle All` 按 **回车**（或输入 `A`）。
+  - **选择所有需要更新的工具**：移到 `[U] Select Outdated` 按 **回车**（或输入 `U`），或在终端直接运行 `install-dev-tool --update-all`。
+  - **退出**：移到 `[E] Exit` 按 **回车**（或输入 `E`）。
 
 **小贴士：**
+- Bun 通过其官方脚本 (`https://bun.sh/install`) 安装到 `~/.bun/bin`。
 - Go 和 Node.js 安装到 `~/.local/`——不需要 `sudo`，全局安装 npm 包也不需要。
 - Python 会与 `uv`（Astral 出品的高性能 Python 包与项目管理器）一起安装。
 - JDK 安装官方 Eclipse Temurin LTS 版本并自动配置 `JAVA_HOME`。

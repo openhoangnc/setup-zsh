@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Tự động chuyển thư mục** — Gõ đường dẫn thư mục rồi Enter. Không cần gõ `cd`.
 - **Màu sắc file nổi bật** — File và thư mục có màu riêng, đẹp trên cả giao diện sáng lẫn tối.
 - **Cấu hình mặc định tốt hơn** — Tab completion, lịch sử không trùng lặp, lưu tới 100.000 lệnh.
-- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Go, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, và Google Chrome. Chọn bằng phím mũi tên.
+- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Bun, Go, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, và Google Chrome. Chọn bằng phím mũi tên.
 
 ---
 
@@ -69,14 +69,16 @@ Chạy `install-dev-tool` để mở menu tương tác.
 
 ![install-dev-tool](install-dev-tool.png)
 
-- **Di chuyển**: Dùng phím **Lên / Xuống** để di chuyển con trỏ (`❯`).
+- **Di chuyển**: Dùng phím **Lên / Xuống / Trái / Phải** để di chuyển con trỏ (`❯`).
 - **Chọn công cụ**: Nhấn **Space** hoặc **Enter** để đánh dấu chọn (`[ ]` ↔ `[✓]`).
-- **Cài đặt**: Chuyển đến `[I] Install Selected Tools` rồi nhấn **Enter** (hoặc gõ `I`).
-- **Chọn tất cả**: Nhấn **Enter** trên `[A] Toggle All` (hoặc gõ `A`).
-- **Cập nhật tất cả bản cũ**: Nhấn **Enter** trên `[U] Select Outdated Tools` (hoặc gõ `U`), hoặc chạy `install-dev-tool --update-all` trực tiếp từ terminal.
-- **Thoát**: Nhấn **Enter** trên `[E] Exit` (hoặc gõ `E`).
+- **Thao tác (gộp trên 1 dòng ở dưới)**:
+  - **Cài đặt**: Chuyển đến `[I] Install` rồi nhấn **Enter** (hoặc gõ `I`).
+  - **Chọn tất cả**: Chuyển đến `[A] Toggle All` rồi nhấn **Enter** (hoặc gõ `A`).
+  - **Cập nhật tất cả bản cũ**: Chuyển đến `[U] Select Outdated` rồi nhấn **Enter** (hoặc gõ `U`), hoặc chạy `install-dev-tool --update-all` trực tiếp từ terminal.
+  - **Thoát**: Chuyển đến `[E] Exit` rồi nhấn **Enter** (hoặc gõ `E`).
 
 **Lưu ý thêm:**
+- Bun được cài qua script chính thức (`https://bun.sh/install`) vào `~/.bun/bin`.
 - Go và Node.js cài vào `~/.local/` — không cần `sudo`, kể cả khi cài npm package toàn cục.
 - Python được cài kèm `uv` (trình quản lý package & project Python tốc độ cao của Astral).
 - JDK cài đặt bản chính thức Eclipse Temurin LTS và tự cấu hình `JAVA_HOME`.

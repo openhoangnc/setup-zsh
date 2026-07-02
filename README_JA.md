@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Auto-CD（自動ディレクトリ移動）** — ディレクトリパスを入力してEnterを押すだけで移動できます。`cd` と入力する必要はありません。
 - **カラフルなファイル一覧表示** — ファイルとフォルダが色分けされ、ライトモード・ダークモードのどちらでも見やすくなります。
 - **最適なデフォルト設定** — Tab補全の向上、履歴の重複排除、最大10万件のコマンド履歴保存。
-- **開発ツールインストーラー (`install-dev-tool`)** — Go、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude、Google Chrome をインストールできるインタラクティブメニュー。矢印キーで選択できます。
+- **開発ツールインストーラー (`install-dev-tool`)** — Bun、Go、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude、Google Chrome をインストールできるインタラクティブメニュー。矢印キーで選択できます。
 
 ---
 
@@ -69,14 +69,16 @@ source ~/.zshrc
 
 ![install-dev-tool](install-dev-tool.png)
 
-- **移動**: **上 / 下** 矢印キーでカーソル（`❯`）を移動。
+- **移動**: **上 / 下 / 左 / 右** 矢印キーでカーソル（`❯`）を移動。
 - **ツール選択**: **スペース** または **Enter** でチェック/解除（`[ ]` ↔ `[✓]`）。
-- **インストール**: `[I] Install Selected Tools` に移動して **Enter** を押す（または `I` と入力）。
-- **全選択**: `[A] Toggle All` で **Enter** を押す（または `A` と入力）。
-- **更新が必要な全ツール選択**: `[U] Select Outdated Tools` で **Enter** を押す（または `U` と入力）、またはターミナルから直接 `install-dev-tool --update-all` を実行。
-- **終了**: `[E] Exit` で **Enter** を押す（または `E` と入力）。
+- **アクション（最下部1行に集約）**:
+  - **インストール**: `[I] Install` に移動して **Enter** を押す（または `I` と入力）。
+  - **全選択**: `[A] Toggle All` に移動して **Enter** を押す（または `A` と入力）。
+  - **更新が必要な全ツール選択**: `[U] Select Outdated` に移動して **Enter** を押す（または `U` と入力）、またはターミナルから直接 `install-dev-tool --update-all` を実行。
+  - **終了**: `[E] Exit` に移動して **Enter** を押す（または `E` と入力）。
 
 **知っておくと便利:**
+- Bun は公式スクリプト (`https://bun.sh/install`) 経由で `~/.bun/bin` にインストールされます。
 - Go と Node.js は `~/.local/` にインストールされます。グローバル npm パッケージのインストールでも `sudo` は不要です。
 - Python は `uv`（Astral製の高速なPythonパッケージ＆プロジェクトマネージャー）と一緒にインストールされます。
 - JDK は公式の Eclipse Temurin LTS リリースをインストールし、`JAVA_HOME` を自動設定します。

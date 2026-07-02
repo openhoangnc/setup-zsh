@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # setup-zsh Developer Tool Installer
-# Installs and updates Go, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome on macOS.
+# Installs and updates Bun, Go, JDK (Eclipse Temurin LTS), Node.js, Python & uv, Rust, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome on macOS.
 
 # ANSI color codes
 RED='\033[0;31m'
@@ -27,6 +27,15 @@ else
     DBEAVER_ARCH="aarch64"
     JDK_ARCH="aarch64"
 fi
+
+LOG_DIR="$HOME/.zsh/setup-zsh"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/install.log"
+
+log_msg() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+}
+trap 'log_msg "Shell error on line $LINENO (command: $BASH_COMMAND)"' ERR
 
 TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 
@@ -107,6 +116,11 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     echo "$LATEST" > "$TEMP_VER_DIR/antigravity"
 ) &
 
+(
+    LATEST=$(curl -s https://formulae.brew.sh/api/formula/bun.json | grep -o '"stable":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
+    echo "$LATEST" > "$TEMP_VER_DIR/bun"
+) &
+
 # Spinner loading indicator
 show_spinner() {
     local delay=0.1
@@ -127,6 +141,7 @@ show_spinner
 wait
 
 # Read latest versions
+LATEST_BUN=$(cat "$TEMP_VER_DIR/bun" 2>/dev/null || echo "Unknown")
 LATEST_GO=$(cat "$TEMP_VER_DIR/go" 2>/dev/null || echo "Unknown")
 LATEST_NODE=$(cat "$TEMP_VER_DIR/node" 2>/dev/null || echo "Unknown")
 LATEST_ORB=$(cat "$TEMP_VER_DIR/orb" 2>/dev/null || echo "Unknown")
@@ -145,6 +160,13 @@ LATEST_ANTIGRAVITY=$(cat "$TEMP_VER_DIR/antigravity" 2>/dev/null || echo "Unknow
 rm -rf "$TEMP_VER_DIR"
 
 # Detection helper functions
+detect_bun() {
+    if [[ -x "$HOME/.bun/bin/bun" ]]; then
+        "$HOME/.bun/bin/bun" --version 2>/dev/null | sed 's/^v//' || echo ""
+    elif command -v bun &>/dev/null; then
+        bun --version 2>/dev/null | sed 's/^v//' || echo ""
+    fi
+}
 detect_go() {
     if [[ -x "$HOME/.local/go/bin/go" ]]; then
         echo "$("$HOME/.local/go/bin/go" version | awk '{print $3}' | sed 's/^go//')"
@@ -299,6 +321,16 @@ show_line() {
     fi
 }
 
+show_action_item() {
+    local line_num="$1"
+    local text="$2"
+    if [ "$CURSOR" -eq "$line_num" ]; then
+        echo -n -e "${CYAN}❯ \033[1;36m${text}${NC}"
+    else
+        echo -n -e "  ${text}"
+    fi
+}
+
 update_env_block() {
     local marker="$1"
     local content="$2"
@@ -362,6 +394,20 @@ reopen_app_if_was_running() {
         echo -e "${BLUE}Reopening ${app_name}...${NC}"
         open "$app_path" 2>/dev/null || true
     fi
+}
+
+install_bun() {
+    echo -e "${BLUE}Installing Bun v${LATEST_BUN}...${NC}"
+    if ! curl -fsSL https://bun.sh/install | bash; then
+        echo -e "${RED}Error: Failed to install Bun.${NC}"
+        return 1
+    fi
+    
+    echo "Updating env.zsh..."
+    local content="export BUN_INSTALL=\"\$HOME/.bun\"\nexport PATH=\"\$BUN_INSTALL/bin:\$PATH\""
+    update_env_block "Bun" "$content"
+    
+    echo -e "${GREEN}✓ Bun v${LATEST_BUN} installed successfully!${NC}"
 }
 
 install_go() {
@@ -938,13 +984,13 @@ install_antigravity() {
 }
 
 # Selection states (0 = unselected, 1 = selected)
-SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0; SEL_15=0
+SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0; SEL_15=0; SEL_16=0
 CURSOR=1
 do_install=0
 
 toggle_all() {
     local any_unselected=0
-    for i in {1..15}; do
+    for i in {1..16}; do
         eval "local val=\$SEL_$i"
         if [ "$val" -eq 0 ]; then
             any_unselected=1
@@ -952,7 +998,7 @@ toggle_all() {
         fi
     done
     
-    for i in {1..15}; do
+    for i in {1..16}; do
         if [ "$any_unselected" -eq 1 ]; then
             eval "SEL_$i=1"
         else
@@ -962,31 +1008,34 @@ toggle_all() {
 }
 
 select_outdated() {
-    for i in {1..15}; do
+    for i in {1..16}; do
         eval "SEL_$i=0"
     done
-    [[ -n "$INST_GO" && "$INST_GO" != "$LATEST_GO" ]] && SEL_1=1
-    [[ -n "$INST_NODE" && "$INST_NODE" != "$LATEST_NODE" ]] && SEL_2=1
+    [[ -n "$INST_BUN" && "$INST_BUN" != "$LATEST_BUN" ]] && SEL_1=1
+    [[ -n "$INST_GO" && "$INST_GO" != "$LATEST_GO" ]] && SEL_2=1
+    [[ -n "$INST_JDK" && "$INST_JDK" != "$LATEST_JDK" ]] && SEL_3=1
+    [[ -n "$INST_NODE" && "$INST_NODE" != "$LATEST_NODE" ]] && SEL_4=1
     if [[ -n "$INST_PYTHON" || -n "$INST_UV" ]]; then
         if [[ "$INST_PYTHON" != "$LATEST_PYTHON" || "$INST_UV" != "$LATEST_UV" || -z "$INST_PYTHON" || -z "$INST_UV" ]]; then
-            SEL_3=1
+            SEL_5=1
         fi
     fi
-    [[ -n "$INST_RUST" && "$INST_RUST" != "$LATEST_RUST" ]] && SEL_4=1
-    [[ -n "$INST_JDK" && "$INST_JDK" != "$LATEST_JDK" ]] && SEL_5=1
-    [[ -n "$INST_ORB" && "$INST_ORB" != "$LATEST_ORB" ]] && SEL_7=1
-    [[ -n "$INST_ANDROID_STUDIO" && "$INST_ANDROID_STUDIO" != "$LATEST_ANDROID_STUDIO" ]] && SEL_8=1
-    [[ -n "$INST_VSCODE" && "$INST_VSCODE" != "$LATEST_VSCODE" ]] && SEL_9=1
-    [[ -n "$INST_DBEAVER" && "$INST_DBEAVER" != "$LATEST_DBEAVER" ]] && SEL_10=1
-    [[ -n "$INST_COMPASS" && "$INST_COMPASS" != "$LATEST_COMPASS" ]] && SEL_11=1
-    [[ -n "$INST_ANTIGRAVITY" && "$INST_ANTIGRAVITY" != "$LATEST_ANTIGRAVITY" ]] && SEL_12=1
-    [[ -n "$INST_CLAUDE" && "$INST_CLAUDE" != "$LATEST_CLAUDE" ]] && SEL_13=1
-    [[ -n "$INST_CODEX" && "$INST_CODEX" != "$LATEST_CODEX" ]] && SEL_14=1
-    [[ -n "$INST_CHROME" && "$INST_CHROME" != "$LATEST_CHROME" ]] && SEL_15=1
+    [[ -n "$INST_RUST" && "$INST_RUST" != "$LATEST_RUST" ]] && SEL_6=1
+    [[ -n "$INST_ORB" && "$INST_ORB" != "$LATEST_ORB" ]] && SEL_8=1
+    [[ -n "$INST_ANDROID_STUDIO" && "$INST_ANDROID_STUDIO" != "$LATEST_ANDROID_STUDIO" ]] && SEL_9=1
+    [[ -n "$INST_VSCODE" && "$INST_VSCODE" != "$LATEST_VSCODE" ]] && SEL_10=1
+    [[ -n "$INST_DBEAVER" && "$INST_DBEAVER" != "$LATEST_DBEAVER" ]] && SEL_11=1
+    [[ -n "$INST_COMPASS" && "$INST_COMPASS" != "$LATEST_COMPASS" ]] && SEL_12=1
+    [[ -n "$INST_ANTIGRAVITY" && "$INST_ANTIGRAVITY" != "$LATEST_ANTIGRAVITY" ]] && SEL_13=1
+    [[ -n "$INST_CLAUDE" && "$INST_CLAUDE" != "$LATEST_CLAUDE" ]] && SEL_14=1
+    [[ -n "$INST_CODEX" && "$INST_CODEX" != "$LATEST_CODEX" ]] && SEL_15=1
+    [[ -n "$INST_CHROME" && "$INST_CHROME" != "$LATEST_CHROME" ]] && SEL_16=1
 }
 
 has_outdated_tools() {
+    [[ -n "$INST_BUN" && "$INST_BUN" != "$LATEST_BUN" ]] && return 0
     [[ -n "$INST_GO" && "$INST_GO" != "$LATEST_GO" ]] && return 0
+    [[ -n "$INST_JDK" && "$INST_JDK" != "$LATEST_JDK" ]] && return 0
     [[ -n "$INST_NODE" && "$INST_NODE" != "$LATEST_NODE" ]] && return 0
     if [[ -n "$INST_PYTHON" || -n "$INST_UV" ]]; then
         if [[ "$INST_PYTHON" != "$LATEST_PYTHON" || "$INST_UV" != "$LATEST_UV" || -z "$INST_PYTHON" || -z "$INST_UV" ]]; then
@@ -994,7 +1043,6 @@ has_outdated_tools() {
         fi
     fi
     [[ -n "$INST_RUST" && "$INST_RUST" != "$LATEST_RUST" ]] && return 0
-    [[ -n "$INST_JDK" && "$INST_JDK" != "$LATEST_JDK" ]] && return 0
     [[ -n "$INST_ORB" && "$INST_ORB" != "$LATEST_ORB" ]] && return 0
     [[ -n "$INST_ANDROID_STUDIO" && "$INST_ANDROID_STUDIO" != "$LATEST_ANDROID_STUDIO" ]] && return 0
     [[ -n "$INST_VSCODE" && "$INST_VSCODE" != "$LATEST_VSCODE" ]] && return 0
@@ -1008,6 +1056,7 @@ has_outdated_tools() {
 }
 
 refresh_installed_tools() {
+    INST_BUN=$(detect_bun)
     INST_GO=$(detect_go)
     INST_NODE=$(detect_node)
     INST_ORB=$(detect_orb)
@@ -1044,9 +1093,9 @@ fi
 # Main loop
 while true; do
     if [ "$do_install" -eq 0 ]; then
-        local max_cursor=18
+        max_cursor=19
         if has_outdated_tools; then
-            max_cursor=19
+            max_cursor=20
         fi
         if [ "$CURSOR" -gt "$max_cursor" ]; then
             CURSOR=$max_cursor
@@ -1057,40 +1106,38 @@ while true; do
             echo -e "${BLUE}==================================================${NC}\033[K"
             echo -e "${BLUE}        🛠️  setup-zsh Developer Tool Installer${NC}\033[K"
             echo -e "${BLUE}==================================================${NC}\033[K"
-            echo -e "Use Up/Down arrows to navigate, Space/Enter to toggle selections.\033[K"
+            echo -e "Use Up/Down/Left/Right arrows to navigate, Space/Enter to toggle.\033[K"
             echo ""
             echo -e "${PURPLE}── Languages & Runtimes ─────────────────────────${NC}\033[K"
-            show_line 1 "$(show_checkbox "$SEL_1")  1) 🐹 Go (Golang)        $(format_status "$INST_GO" "$LATEST_GO")"
-            show_line 2 "$(show_checkbox "$SEL_2")  2) 🟢 Node.js            $(format_status "$INST_NODE" "$LATEST_NODE")"
-            show_line 3 "$(show_checkbox "$SEL_3")  3) 🐍 Python & uv        $(format_python_status "$INST_PYTHON" "$INST_UV")"
-            show_line 4 "$(show_checkbox "$SEL_4")  4) 🦀 Rust               $(format_status "$INST_RUST" "$LATEST_RUST")"
-            show_line 5 "$(show_checkbox "$SEL_5")  5) ☕ JDK (Temurin LTS)  $(format_status "$INST_JDK" "$LATEST_JDK")"
+            show_line 1 "$(show_checkbox "$SEL_1")  1) 🥟 Bun                $(format_status "$INST_BUN" "$LATEST_BUN")"
+            show_line 2 "$(show_checkbox "$SEL_2")  2) 🐹 Go (Golang)        $(format_status "$INST_GO" "$LATEST_GO")"
+            show_line 3 "$(show_checkbox "$SEL_3")  3) ☕ JDK (Temurin LTS)  $(format_status "$INST_JDK" "$LATEST_JDK")"
+            show_line 4 "$(show_checkbox "$SEL_4")  4) 🟢 Node.js            $(format_status "$INST_NODE" "$LATEST_NODE")"
+            show_line 5 "$(show_checkbox "$SEL_5")  5) 🐍 Python & uv        $(format_python_status "$INST_PYTHON" "$INST_UV")"
+            show_line 6 "$(show_checkbox "$SEL_6")  6) 🦀 Rust               $(format_status "$INST_RUST" "$LATEST_RUST")"
             echo -e "${PURPLE}── Dev Tools & Infrastructure ───────────────────${NC}\033[K"
-            show_line 6 "$(show_checkbox "$SEL_6")  6) 🐙 Git                $(format_git_status "$INST_GIT")"
-            show_line 7 "$(show_checkbox "$SEL_7")  7) 🔮 OrbStack (Docker)  $(format_status "$INST_ORB" "$LATEST_ORB")"
+            show_line 7 "$(show_checkbox "$SEL_7")  7) 🐙 Git                $(format_git_status "$INST_GIT")"
+            show_line 8 "$(show_checkbox "$SEL_8")  8) 🔮 OrbStack (Docker)  $(format_status "$INST_ORB" "$LATEST_ORB")"
             echo -e "${PURPLE}── IDEs & Editors ───────────────────────────────${NC}\033[K"
-            show_line 8 "$(show_checkbox "$SEL_8")  8) 🤖 Android Studio     $(format_status "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO")"
-            show_line 9 "$(show_checkbox "$SEL_9")  9) 🟦 VSCode             $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
+            show_line 9 "$(show_checkbox "$SEL_9")  9) 🤖 Android Studio     $(format_status "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO")"
+            show_line 10 "$(show_checkbox "$SEL_10") 10) 🟦 VSCode             $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
             echo -e "${PURPLE}── Database Tools ───────────────────────────────${NC}\033[K"
-            show_line 10 "$(show_checkbox "$SEL_10") 10) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
-            show_line 11 "$(show_checkbox "$SEL_11") 11) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
+            show_line 11 "$(show_checkbox "$SEL_11") 11) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
+            show_line 12 "$(show_checkbox "$SEL_12") 12) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
             echo -e "${PURPLE}── Applications & AI ────────────────────────────${NC}\033[K"
-            show_line 12 "$(show_checkbox "$SEL_12") 12) 🚀 Antigravity        $(format_status "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY")"
-            show_line 13 "$(show_checkbox "$SEL_13") 13) 💥 Claude             $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
-            show_line 14 "$(show_checkbox "$SEL_14") 14) 🧠 Codex              $(format_status "$INST_CODEX" "$LATEST_CODEX")"
-            show_line 15 "$(show_checkbox "$SEL_15") 15) 🌐 Google Chrome      $(format_status "$INST_CHROME" "$LATEST_CHROME")"
+            show_line 13 "$(show_checkbox "$SEL_13") 13) 🚀 Antigravity        $(format_status "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY")"
+            show_line 14 "$(show_checkbox "$SEL_14") 14) 💥 Claude             $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
+            show_line 15 "$(show_checkbox "$SEL_15") 15) 🧠 Codex              $(format_status "$INST_CODEX" "$LATEST_CODEX")"
+            show_line 16 "$(show_checkbox "$SEL_16") 16) 🌐 Google Chrome      $(format_status "$INST_CHROME" "$LATEST_CHROME")"
             echo -e "\033[K"
-            show_line 16 "[I] Install Selected Tools"
-            show_line 17 "[A] Toggle All"
             if has_outdated_tools; then
-                show_line 18 "[U] Select Outdated Tools"
-                show_line 19 "[E] Exit"
+                echo -e "$(show_action_item 17 "[I] Install")  $(show_action_item 18 "[A] Toggle All")  $(show_action_item 19 "[U] Select Outdated")  $(show_action_item 20 "[E] Exit")\033[K"
             else
-                show_line 18 "[E] Exit"
+                echo -e "$(show_action_item 17 "[I] Install")    $(show_action_item 18 "[A] Toggle All")    $(show_action_item 19 "[E] Exit")\033[K"
             fi
             echo -e "${BLUE}==================================================${NC}\033[K"
         )
-        printf '\033[2J\033[3J\033[H%s\n' "$menu_buf"
+        printf '\033[2J\033[H%s\n' "$menu_buf"
         
         # Read one character (escape sequences check)
         IFS= read -r -s -n 1 key 2>/dev/null
@@ -1102,6 +1149,10 @@ while true; do
                 action="UP"
             elif [[ "$next_chars" = "[B" || "$next_chars" = "OB" ]]; then
                 action="DOWN"
+            elif [[ "$next_chars" = "[C" || "$next_chars" = "OC" ]]; then
+                action="RIGHT"
+            elif [[ "$next_chars" = "[D" || "$next_chars" = "OD" ]]; then
+                action="LEFT"
             fi
         elif [[ "$key" = " " ]]; then
             action="SPACE"
@@ -1123,32 +1174,65 @@ while true; do
         
         case "$action" in
             UP)
-                CURSOR=$((CURSOR - 1))
-                if [ "$CURSOR" -lt 1 ]; then
-                    CURSOR=$max_cursor
+                if [ "$CURSOR" -ge 17 ]; then
+                    CURSOR=16
+                else
+                    CURSOR=$((CURSOR - 1))
+                    if [ "$CURSOR" -lt 1 ]; then
+                        CURSOR=$max_cursor
+                    fi
                 fi
                 ;;
             DOWN)
-                CURSOR=$((CURSOR + 1))
-                if [ "$CURSOR" -gt "$max_cursor" ]; then
+                if [ "$CURSOR" -eq 16 ]; then
+                    CURSOR=17
+                elif [ "$CURSOR" -ge 17 ]; then
                     CURSOR=1
+                else
+                    CURSOR=$((CURSOR + 1))
+                fi
+                ;;
+            LEFT)
+                if [ "$CURSOR" -ge 17 ]; then
+                    CURSOR=$((CURSOR - 1))
+                    if [ "$CURSOR" -lt 17 ]; then
+                        CURSOR=$max_cursor
+                    fi
+                else
+                    CURSOR=$((CURSOR - 1))
+                    if [ "$CURSOR" -lt 1 ]; then
+                        CURSOR=$max_cursor
+                    fi
+                fi
+                ;;
+            RIGHT)
+                if [ "$CURSOR" -ge 17 ]; then
+                    CURSOR=$((CURSOR + 1))
+                    if [ "$CURSOR" -gt "$max_cursor" ]; then
+                        CURSOR=17
+                    fi
+                else
+                    CURSOR=$((CURSOR + 1))
+                    if [ "$CURSOR" -gt "$max_cursor" ]; then
+                        CURSOR=1
+                    fi
                 fi
                 ;;
             SPACE|ENTER)
-                if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 15 ]; then
+                if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 16 ]; then
                     eval "SEL_$CURSOR=\$((1 - SEL_$CURSOR))"
-                elif [ "$CURSOR" -eq 16 ]; then
-                    do_install=1
                 elif [ "$CURSOR" -eq 17 ]; then
-                    toggle_all
+                    do_install=1
                 elif [ "$CURSOR" -eq 18 ]; then
+                    toggle_all
+                elif [ "$CURSOR" -eq 19 ]; then
                     if has_outdated_tools; then
                         select_outdated
                     else
                         echo -e "\n${BLUE}Goodbye!${NC}"
                         exit 0
                     fi
-                elif [ "$CURSOR" -eq 19 ]; then
+                elif [ "$CURSOR" -eq 20 ]; then
                     echo -e "\n${BLUE}Goodbye!${NC}"
                     exit 0
                 fi
@@ -1178,7 +1262,7 @@ while true; do
         
         # Count selected tools
         count=0
-        for i in {1..15}; do
+        for i in {1..16}; do
             eval "val=\$SEL_$i"
             if [ "$val" -eq 1 ]; then
                 count=$((count + 1))
@@ -1195,52 +1279,55 @@ while true; do
         echo -e "\n${BLUE}Preparing installation...${NC}\n"
         
         # Check confirm_reinstall upfront for tools that are already up-to-date
-        if [ "$SEL_1" -eq 1 ] && [[ "$INST_GO" == "$LATEST_GO" ]] && ! confirm_reinstall "Go" "$LATEST_GO"; then
+        if [ "$SEL_1" -eq 1 ] && [[ "$INST_BUN" == "$LATEST_BUN" ]] && ! confirm_reinstall "Bun" "$LATEST_BUN"; then
             SEL_1=0
         fi
-        if [ "$SEL_2" -eq 1 ] && [[ "$INST_NODE" == "$LATEST_NODE" ]] && ! confirm_reinstall "Node.js" "$LATEST_NODE"; then
+        if [ "$SEL_2" -eq 1 ] && [[ "$INST_GO" == "$LATEST_GO" ]] && ! confirm_reinstall "Go" "$LATEST_GO"; then
             SEL_2=0
         fi
-        if [ "$SEL_3" -eq 1 ] && [[ -n "$INST_PYTHON" && -n "$INST_UV" ]] && ! confirm_reinstall "Python & uv" "$LATEST_PYTHON"; then
+        if [ "$SEL_3" -eq 1 ] && [[ "$INST_JDK" == "$LATEST_JDK" ]] && ! confirm_reinstall "Eclipse Temurin JDK LTS" "$LATEST_JDK"; then
             SEL_3=0
         fi
-        if [ "$SEL_4" -eq 1 ] && [[ "$INST_RUST" == "$LATEST_RUST" ]] && ! confirm_reinstall "Rust" "$LATEST_RUST"; then
+        if [ "$SEL_4" -eq 1 ] && [[ "$INST_NODE" == "$LATEST_NODE" ]] && ! confirm_reinstall "Node.js" "$LATEST_NODE"; then
             SEL_4=0
         fi
-        if [ "$SEL_5" -eq 1 ] && [[ "$INST_JDK" == "$LATEST_JDK" ]] && ! confirm_reinstall "Eclipse Temurin JDK LTS" "$LATEST_JDK"; then
+        if [ "$SEL_5" -eq 1 ] && [[ -n "$INST_PYTHON" && -n "$INST_UV" ]] && ! confirm_reinstall "Python & uv" "$LATEST_PYTHON"; then
             SEL_5=0
         fi
-        if [ "$SEL_7" -eq 1 ] && [[ "$INST_ORB" == "$LATEST_ORB" ]] && ! confirm_reinstall "OrbStack" "$LATEST_ORB"; then
-            SEL_7=0
+        if [ "$SEL_6" -eq 1 ] && [[ "$INST_RUST" == "$LATEST_RUST" ]] && ! confirm_reinstall "Rust" "$LATEST_RUST"; then
+            SEL_6=0
         fi
-        if [ "$SEL_8" -eq 1 ] && [[ "$INST_ANDROID_STUDIO" == "$LATEST_ANDROID_STUDIO" ]] && ! confirm_reinstall "Android Studio" "$LATEST_ANDROID_STUDIO"; then
+        if [ "$SEL_8" -eq 1 ] && [[ "$INST_ORB" == "$LATEST_ORB" ]] && ! confirm_reinstall "OrbStack" "$LATEST_ORB"; then
             SEL_8=0
         fi
-        if [ "$SEL_9" -eq 1 ] && [[ "$INST_VSCODE" == "$LATEST_VSCODE" ]] && ! confirm_reinstall "VSCode" "$LATEST_VSCODE"; then
+        if [ "$SEL_9" -eq 1 ] && [[ "$INST_ANDROID_STUDIO" == "$LATEST_ANDROID_STUDIO" ]] && ! confirm_reinstall "Android Studio" "$LATEST_ANDROID_STUDIO"; then
             SEL_9=0
         fi
-        if [ "$SEL_10" -eq 1 ] && [[ "$INST_DBEAVER" == "$LATEST_DBEAVER" ]] && ! confirm_reinstall "DBeaver Community Edition" "$LATEST_DBEAVER"; then
+        if [ "$SEL_10" -eq 1 ] && [[ "$INST_VSCODE" == "$LATEST_VSCODE" ]] && ! confirm_reinstall "VSCode" "$LATEST_VSCODE"; then
             SEL_10=0
         fi
-        if [ "$SEL_11" -eq 1 ] && [[ "$INST_COMPASS" == "$LATEST_COMPASS" ]] && ! confirm_reinstall "MongoDB Compass" "$LATEST_COMPASS"; then
+        if [ "$SEL_11" -eq 1 ] && [[ "$INST_DBEAVER" == "$LATEST_DBEAVER" ]] && ! confirm_reinstall "DBeaver Community Edition" "$LATEST_DBEAVER"; then
             SEL_11=0
         fi
-        if [ "$SEL_12" -eq 1 ] && [[ "$INST_ANTIGRAVITY" == "$LATEST_ANTIGRAVITY" ]] && ! confirm_reinstall "Antigravity" "$LATEST_ANTIGRAVITY"; then
+        if [ "$SEL_12" -eq 1 ] && [[ "$INST_COMPASS" == "$LATEST_COMPASS" ]] && ! confirm_reinstall "MongoDB Compass" "$LATEST_COMPASS"; then
             SEL_12=0
         fi
-        if [ "$SEL_13" -eq 1 ] && [[ "$INST_CLAUDE" == "$LATEST_CLAUDE" ]] && ! confirm_reinstall "Claude" "$LATEST_CLAUDE"; then
+        if [ "$SEL_13" -eq 1 ] && [[ "$INST_ANTIGRAVITY" == "$LATEST_ANTIGRAVITY" ]] && ! confirm_reinstall "Antigravity" "$LATEST_ANTIGRAVITY"; then
             SEL_13=0
         fi
-        if [ "$SEL_14" -eq 1 ] && [[ "$INST_CODEX" == "$LATEST_CODEX" ]] && ! confirm_reinstall "Codex" "$LATEST_CODEX"; then
+        if [ "$SEL_14" -eq 1 ] && [[ "$INST_CLAUDE" == "$LATEST_CLAUDE" ]] && ! confirm_reinstall "Claude" "$LATEST_CLAUDE"; then
             SEL_14=0
         fi
-        if [ "$SEL_15" -eq 1 ] && [[ "$INST_CHROME" == "$LATEST_CHROME" ]] && ! confirm_reinstall "Google Chrome" "$LATEST_CHROME"; then
+        if [ "$SEL_15" -eq 1 ] && [[ "$INST_CODEX" == "$LATEST_CODEX" ]] && ! confirm_reinstall "Codex" "$LATEST_CODEX"; then
             SEL_15=0
+        fi
+        if [ "$SEL_16" -eq 1 ] && [[ "$INST_CHROME" == "$LATEST_CHROME" ]] && ! confirm_reinstall "Google Chrome" "$LATEST_CHROME"; then
+            SEL_16=0
         fi
 
         # Recount after up-to-date checks
         count=0
-        for i in {1..15}; do
+        for i in {1..16}; do
             eval "val=\$SEL_$i"
             if [ "$val" -eq 1 ]; then
                 count=$((count + 1))
@@ -1268,47 +1355,47 @@ while true; do
         running_app_names=()
         running_app_paths=()
 
-        if [ "$SEL_7" -eq 1 ] && is_app_running "/Applications/OrbStack.app"; then
+        if [ "$SEL_8" -eq 1 ] && is_app_running "/Applications/OrbStack.app"; then
             running_app_names+=("OrbStack")
             running_app_paths+=("/Applications/OrbStack.app")
             WAS_RUNNING_ORB=1
         fi
-        if [ "$SEL_8" -eq 1 ] && is_app_running "/Applications/Android Studio.app"; then
+        if [ "$SEL_9" -eq 1 ] && is_app_running "/Applications/Android Studio.app"; then
             running_app_names+=("Android Studio")
             running_app_paths+=("/Applications/Android Studio.app")
             WAS_RUNNING_ANDROID_STUDIO=1
         fi
-        if [ "$SEL_9" -eq 1 ] && is_app_running "/Applications/Visual Studio Code.app"; then
+        if [ "$SEL_10" -eq 1 ] && is_app_running "/Applications/Visual Studio Code.app"; then
             running_app_names+=("VSCode")
             running_app_paths+=("/Applications/Visual Studio Code.app")
             WAS_RUNNING_VSCODE=1
         fi
-        if [ "$SEL_10" -eq 1 ] && is_app_running "/Applications/DBeaver.app"; then
+        if [ "$SEL_11" -eq 1 ] && is_app_running "/Applications/DBeaver.app"; then
             running_app_names+=("DBeaver")
             running_app_paths+=("/Applications/DBeaver.app")
             WAS_RUNNING_DBEAVER=1
         fi
-        if [ "$SEL_11" -eq 1 ] && is_app_running "/Applications/MongoDB Compass.app"; then
+        if [ "$SEL_12" -eq 1 ] && is_app_running "/Applications/MongoDB Compass.app"; then
             running_app_names+=("MongoDB Compass")
             running_app_paths+=("/Applications/MongoDB Compass.app")
             WAS_RUNNING_COMPASS=1
         fi
-        if [ "$SEL_12" -eq 1 ] && is_app_running "/Applications/Antigravity.app"; then
+        if [ "$SEL_13" -eq 1 ] && is_app_running "/Applications/Antigravity.app"; then
             running_app_names+=("Antigravity")
             running_app_paths+=("/Applications/Antigravity.app")
             WAS_RUNNING_ANTIGRAVITY=1
         fi
-        if [ "$SEL_13" -eq 1 ] && is_app_running "/Applications/Claude.app"; then
+        if [ "$SEL_14" -eq 1 ] && is_app_running "/Applications/Claude.app"; then
             running_app_names+=("Claude")
             running_app_paths+=("/Applications/Claude.app")
             WAS_RUNNING_CLAUDE=1
         fi
-        if [ "$SEL_14" -eq 1 ] && is_app_running "/Applications/Codex.app"; then
+        if [ "$SEL_15" -eq 1 ] && is_app_running "/Applications/Codex.app"; then
             running_app_names+=("Codex")
             running_app_paths+=("/Applications/Codex.app")
             WAS_RUNNING_CODEX=1
         fi
-        if [ "$SEL_15" -eq 1 ] && is_app_running "/Applications/Google Chrome.app"; then
+        if [ "$SEL_16" -eq 1 ] && is_app_running "/Applications/Google Chrome.app"; then
             running_app_names+=("Google Chrome")
             running_app_paths+=("/Applications/Google Chrome.app")
             WAS_RUNNING_CHROME=1
@@ -1337,100 +1424,117 @@ while true; do
 
         echo -e "\n${BLUE}Starting installation of $count selected tool(s)...${NC}\n"
         
-        # 1. Go
-        if [ "$SEL_1" -eq 1 ]; then
-            install_go
-            echo ""
-        fi
-        
-        # 2. Node.js
-        if [ "$SEL_2" -eq 1 ]; then
-            install_node "$LATEST_NODE"
-            echo ""
-        fi
-        
-        # 3. Python & uv
-        if [ "$SEL_3" -eq 1 ]; then
-            install_python
-            echo ""
-        fi
-        
-        # 4. Rust
-        if [ "$SEL_4" -eq 1 ]; then
-            install_rust
-            echo ""
-        fi
-        
-        # 5. JDK (Eclipse Temurin LTS)
-        if [ "$SEL_5" -eq 1 ]; then
-            install_jdk
-            echo ""
-        fi
-        
-        # 6. Git
-        if [ "$SEL_6" -eq 1 ]; then
-            install_git
-            echo ""
-        fi
-        
-        # 7. OrbStack
-        if [ "$SEL_7" -eq 1 ]; then
-            install_orb
-            echo ""
-        fi
-        
-        # 8. Android Studio
-        if [ "$SEL_8" -eq 1 ]; then
-            install_android_studio
-            echo ""
-        fi
-        
-        # 9. VSCode
-        if [ "$SEL_9" -eq 1 ]; then
-            install_vscode
-            echo ""
-        fi
-        
-        # 10. DBeaver
-        if [ "$SEL_10" -eq 1 ]; then
-            install_dbeaver
-            echo ""
-        fi
-        
-        # 11. MongoDB Compass
-        if [ "$SEL_11" -eq 1 ]; then
-            install_compass
-            echo ""
-        fi
-        
-        # 12. Antigravity
-        if [ "$SEL_12" -eq 1 ]; then
-            install_antigravity
-            echo ""
-        fi
-        
-        # 13. Claude
-        if [ "$SEL_13" -eq 1 ]; then
-            install_claude
-            echo ""
-        fi
-        
-        # 14. Codex
-        if [ "$SEL_14" -eq 1 ]; then
-            install_codex
-            echo ""
-        fi
-        
-        # 15. Google Chrome
-        if [ "$SEL_15" -eq 1 ]; then
-            install_chrome
-            echo ""
-        fi
+        {
+            echo "=================================================="
+            echo "Batch installation started: $(date)"
+            echo "=================================================="
+            
+            # 1. Bun
+            if [ "$SEL_1" -eq 1 ]; then
+                install_bun
+                echo ""
+            fi
+            
+            # 2. Go
+            if [ "$SEL_2" -eq 1 ]; then
+                install_go
+                echo ""
+            fi
+            
+            # 3. JDK (Eclipse Temurin LTS)
+            if [ "$SEL_3" -eq 1 ]; then
+                install_jdk
+                echo ""
+            fi
+            
+            # 4. Node.js
+            if [ "$SEL_4" -eq 1 ]; then
+                install_node "$LATEST_NODE"
+                echo ""
+            fi
+            
+            # 5. Python & uv
+            if [ "$SEL_5" -eq 1 ]; then
+                install_python
+                echo ""
+            fi
+            
+            # 6. Rust
+            if [ "$SEL_6" -eq 1 ]; then
+                install_rust
+                echo ""
+            fi
+            
+            # 7. Git
+            if [ "$SEL_7" -eq 1 ]; then
+                install_git
+                echo ""
+            fi
+            
+            # 8. OrbStack
+            if [ "$SEL_8" -eq 1 ]; then
+                install_orb
+                echo ""
+            fi
+            
+            # 9. Android Studio
+            if [ "$SEL_9" -eq 1 ]; then
+                install_android_studio
+                echo ""
+            fi
+            
+            # 10. VSCode
+            if [ "$SEL_10" -eq 1 ]; then
+                install_vscode
+                echo ""
+            fi
+            
+            # 11. DBeaver
+            if [ "$SEL_11" -eq 1 ]; then
+                install_dbeaver
+                echo ""
+            fi
+            
+            # 12. MongoDB Compass
+            if [ "$SEL_12" -eq 1 ]; then
+                install_compass
+                echo ""
+            fi
+            
+            # 13. Antigravity
+            if [ "$SEL_13" -eq 1 ]; then
+                install_antigravity
+                echo ""
+            fi
+            
+            # 14. Claude
+            if [ "$SEL_14" -eq 1 ]; then
+                install_claude
+                echo ""
+            fi
+            
+            # 15. Codex
+            if [ "$SEL_15" -eq 1 ]; then
+                install_codex
+                echo ""
+            fi
+            
+            # 16. Google Chrome
+            if [ "$SEL_16" -eq 1 ]; then
+                install_chrome
+                echo ""
+            fi
+            
+            echo "=================================================="
+            echo "Batch installation finished: $(date)"
+            echo "=================================================="
+        } 2>&1 | tee -a "$LOG_FILE"
         
         # Reset selections after installation
-        SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0; SEL_15=0
+        SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0; SEL_15=0; SEL_16=0
         
         echo -e "${GREEN}Batch installation completed!${NC}"
+        echo -e "Logs saved to: ${YELLOW}${LOG_FILE}${NC}"
         echo -e "Please run ${YELLOW}source ~/.zshrc${NC} to load environment changes."
         echo -e "\nPress Enter to return to the menu..."
         read -r

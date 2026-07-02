@@ -110,6 +110,12 @@ _needs_env_block() {
 	! grep -q "# >>> ${marker} >>>" "$ENV_FILE"
 }
 
+# Bun
+if ([[ -x "$HOME/.bun/bin/bun" ]] || command -v bun &>/dev/null) && _needs_env_block "Bun"; then
+	echo -e "${BLUE}Detected Bun, adding to PATH...${NC}"
+	_update_env_block "Bun" "export BUN_INSTALL=\"\$HOME/.bun\"\nexport PATH=\"\$BUN_INSTALL/bin:\$PATH\""
+fi
+
 # Go
 if [[ -x "$HOME/.local/go/bin/go" ]] && _needs_env_block "Go"; then
 	echo -e "${BLUE}Detected Go at ~/.local/go, adding to PATH...${NC}"
