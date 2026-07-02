@@ -146,6 +146,12 @@ if command -v python3 &>/dev/null && _needs_env_block "Python"; then
 	_update_env_block "Python" "alias python=\"python3\"\nalias pip=\"pip3\""
 fi
 
+# Android Studio / SDK
+if [[ -d "$HOME/Library/Android/sdk" || -d "/Applications/Android Studio.app" ]] && _needs_env_block "AndroidStudio"; then
+	echo -e "${BLUE}Detected Android Studio / SDK, adding environment variables...${NC}"
+	_update_env_block "AndroidStudio" "export ANDROID_HOME=\"\$HOME/Library/Android/sdk\"\nexport ANDROID_SDK_ROOT=\"\$HOME/Library/Android/sdk\"\nexport PATH=\"\$ANDROID_HOME/emulator:\$ANDROID_HOME/platform-tools:\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/tools:\$ANDROID_HOME/tools/bin:\$PATH\""
+fi
+
 # 6. Save original ~/.zshrc for comparison, then update
 ZSHRC="$HOME/.zshrc"
 ORIGINAL_RC=""
