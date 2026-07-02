@@ -291,7 +291,9 @@ show_line() {
     local line_num="$1"
     local content="$2"
     if [ "$CURSOR" -eq "$line_num" ]; then
-        echo -e "${CYAN}❯${NC} $content"
+        local hl_content
+        hl_content=$(echo -e "$content" | sed "s/\x1b\[0m/\x1b\[0m\x1b\[1;36m/g")
+        echo -e "${CYAN}❯ \033[1;36m${hl_content}${NC}"
     else
         echo -e "  $content"
     fi
@@ -917,8 +919,7 @@ toggle_all() {
     done
 }
 
-# Main loop
-while true; do
+refresh_installed_tools() {
     INST_GO=$(detect_go)
     INST_NODE=$(detect_node)
     INST_ORB=$(detect_orb)
@@ -935,9 +936,26 @@ while true; do
     INST_ANDROID_STUDIO=$(detect_android_studio)
     INST_CODEX=$(detect_codex)
     INST_ANTIGRAVITY=$(detect_antigravity)
-    
-    if [[ -n "$TERM" ]]; then
-        clear
+}
+
+cleanup_cursor() {
+    printf "\033[?25h"
+}
+trap cleanup_cursor EXIT INT TERM
+
+refresh_installed_tools
+first_render=1
+printf "\033[?25l"
+
+# Main loop
+while true; do
+    if [ "$first_render" -eq 1 ]; then
+        if [[ -n "$TERM" ]]; then
+            clear
+        fi
+        first_render=0
+    else
+        printf "\033[H"
     fi
     echo -e "${BLUE}==================================================${NC}"
     echo -e "${BLUE}        🛠️  setup-zsh Developer Tool Installer${NC}"
@@ -960,7 +978,7 @@ while true; do
     show_line 9 "$(show_checkbox "$SEL_9")  9) 🟦 VSCode             $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
     
     echo -e "${PURPLE}── Database Tools ───────────────────────────────${NC}"
-    show_line 10 "$(show_checkbox "$SEL_10") 10) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
+    show_line 10 "$(show_checkbox "$SEL_10") 10) 🦫  DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
     show_line 11 "$(show_checkbox "$SEL_11") 11) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
     
     echo -e "${PURPLE}── Applications & AI ────────────────────────────${NC}"
@@ -1214,5 +1232,7 @@ while true; do
         echo -e "Please run ${YELLOW}source ~/.zshrc${NC} to load environment changes."
         echo -e "\nPress Enter to return to the menu..."
         read -r
+        refresh_installed_tools
+        first_render=1
     fi
 done
