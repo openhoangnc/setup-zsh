@@ -29,7 +29,7 @@ source ~/.zshrc
 - **Gợi ý lệnh thông minh** — Gõ bất kỳ từ nào, hệ thống sẽ tìm trong lịch sử dù từ đó nằm ở giữa câu lệnh. Không phân biệt hoa/thường (gõ `GOOGLE` sẽ tìm thấy `curl -I google.com`).
 - **Duyệt lịch sử bằng phím mũi tên** — Gõ từ khóa rồi nhấn **Lên / Xuống** để xem lần lượt các lệnh chứa từ khóa đó.
 - **Highlight cú pháp** — Lệnh hợp lệ hiện màu xanh, lệnh sai hiện màu đỏ — ngay khi bạn gõ.
-- **Prompt gọn đẹp** — Hiển thị `username (branch*) ❯`. Trong thư mục Git, bạn thấy tên nhánh và trạng thái thay đổi. Mũi tên chuyển hồng nếu lệnh trước bị lỗi.
+- **Prompt gọn đẹp** — Hiển thị `~/đường/dẫn (branch*) ❯`. Trong thư mục Git, bạn thấy tên nhánh và trạng thái thay đổi. Mũi tên chuyển hồng nếu lệnh trước bị lỗi.
 - **Tự động chuyển thư mục** — Gõ đường dẫn thư mục rồi Enter. Không cần gõ `cd`.
 - **Màu sắc file nổi bật** — File và thư mục có màu riêng, đẹp trên cả giao diện sáng lẫn tối.
 - **Cấu hình mặc định tốt hơn** — Tab completion, lịch sử không trùng lặp, lưu tới 100.000 lệnh.
@@ -59,7 +59,7 @@ Gõ đường dẫn rồi nhấn Enter:
 
 ### 3. Prompt hiển thị Git
 
-- Hiển thị `username (branch*) ❯ `.
+- Hiển thị `~/đường/dẫn (branch*) ❯ `. Đường dẫn dài sẽ được tự động rút gọn.
 - Dấu `*` hồng = có thay đổi chưa stage. Dấu `+` xanh = có thay đổi đã stage.
 - Mũi tên `❯` chuyển hồng nếu lệnh cuối bị lỗi.
 

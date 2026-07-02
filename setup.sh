@@ -386,7 +386,7 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 	}
 fi
 
-# 6. Colored Prompt (Username Only, Git status, success/failure indicator)
+# 6. Colored Prompt (Short Directory, Git status, success/failure indicator)
 autoload -Uz vcs_info
 precmd_vcs_info() { vcs_info }
 precmd_functions+=(precmd_vcs_info)
@@ -399,7 +399,7 @@ zstyle ':vcs_info:git:*' stagedstr '%F{121}+%f'
 zstyle ':vcs_info:git:*' formats ' %F{242}(%F{81}%b%u%c%F{242})%f'
 zstyle ':vcs_info:git:*' actionformats ' %F{242}(%F{81}%b%F{197}|%a%u%c%F{242})%f'
 
-PROMPT='%F{147}%n%f${vcs_info_msg_0_} %(?.%F{121}❯%f.%F{197}❯%f) '
+PROMPT='%F{147}%25<…<%~%<<%f${vcs_info_msg_0_} %(?.%F{121}❯%f.%F{197}❯%f) '
 
 # 7. Colors for LS & Directories
 export CLICOLOR=1

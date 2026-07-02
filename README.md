@@ -29,7 +29,7 @@ source ~/.zshrc
 - **Smart Autosuggestions** — Type any word and get suggestions from your history, even if it appears in the middle of a command. Case doesn't matter (e.g., typing `GOOGLE` finds `curl -I google.com`).
 - **History Search with Arrow Keys** — Type a keyword, then press **Up / Down** to scroll through every past command that contains it.
 - **Syntax Highlighting** — Commands turn green if valid, red if not — in real time as you type.
-- **Clean Prompt** — Shows `username (branch*) ❯`. Inside a Git repo, you see the branch name and whether you have uncommitted changes. The arrow turns pink if the last command failed.
+- **Clean Prompt** — Shows `~/short/path (branch*) ❯`. Inside a Git repo, you see the branch name and whether you have uncommitted changes. The arrow turns pink if the last command failed.
 - **Auto-CD** — Type a directory path and press Enter. No need to type `cd` first.
 - **Colorful File Listings** — Files and folders get distinct colors that look good on both light and dark backgrounds.
 - **Better Defaults** — Tab completion, smarter history (no duplicates), and up to 100,000 commands saved.
@@ -59,7 +59,7 @@ Just type a path and press Enter:
 
 ### 3. Git-Aware Prompt
 
-- Shows `username (branch*) ❯ `.
+- Shows `~/short/path (branch*) ❯ `. Long paths are automatically truncated.
 - Pink `*` = you have unstaged changes. Green `+` = you have staged changes.
 - Arrow `❯` turns pink if the last command failed.
 
