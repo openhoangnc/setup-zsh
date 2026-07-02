@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Auto-CD（自動ディレクトリ移動）** — ディレクトリパスを入力してEnterを押すだけで移動できます。`cd` と入力する必要はありません。
 - **カラフルなファイル一覧表示** — ファイルとフォルダが色分けされ、ライトモード・ダークモードのどちらでも見やすくなります。
 - **最適なデフォルト設定** — Tab補全の向上、履歴の重複排除、最大10万件のコマンド履歴保存。
-- **開発ツールインストーラー (`install-dev-tool`)** — Bun、Go、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude、Google Chrome をインストールできるインタラクティブメニュー。矢印キーで選択できます。
+- **開発ツールインストーラー (`install-dev-tool`)** — Bun、Go、Homebrew、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude、Google Chrome をインストールできるインタラクティブメニュー。矢印キーで選択できます。
 
 ---
 
@@ -80,6 +80,7 @@ source ~/.zshrc
 **知っておくと便利:**
 - Bun は公式スクリプト (`https://bun.sh/install`) 経由で `~/.bun/bin` にインストールされます。
 - Go と Node.js は `~/.local/` にインストールされます。グローバル npm パッケージのインストールでも `sudo` は不要です。
+- Homebrew は公式スクリプト (`https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`) 経由でインストールされ、`shellenv` が自動設定されます。
 - Python は `uv`（Astral製の高速なPythonパッケージ＆プロジェクトマネージャー）と一緒にインストールされます。
 - JDK は公式の Eclipse Temurin LTS リリースをインストールし、`JAVA_HOME` を自動設定します。
 - デスクトップアプリ（VSCode、Claude、OrbStack、MongoDB Compass、DBeaver、Google Chrome、Android Studio、Antigravity）は自動的にダウンロードされ、`/Applications` に配置されます。

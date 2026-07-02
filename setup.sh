@@ -170,6 +170,12 @@ if [[ -x "$HOME/.local/bin/codex" ]] && _needs_env_block "Codex"; then
 	_update_env_block "Codex" "export PATH=\"\$HOME/.local/bin:\$PATH\""
 fi
 
+# Homebrew
+if ([[ -x "/opt/homebrew/bin/brew" ]] || [[ -x "/usr/local/bin/brew" ]] || command -v brew &>/dev/null) && _needs_env_block "Homebrew"; then
+	echo -e "${BLUE}Detected Homebrew, adding to PATH...${NC}"
+	_update_env_block "Homebrew" "if [[ -x \"/opt/homebrew/bin/brew\" ]]; then\n  eval \"\$(/opt/homebrew/bin/brew shellenv)\"\nelif [[ -x \"/usr/local/bin/brew\" ]]; then\n  eval \"\$(/usr/local/bin/brew shellenv)\"\nfi"
+fi
+
 # 6. Save original ~/.zshrc for comparison, then update
 ZSHRC="$HOME/.zshrc"
 ORIGINAL_RC=""
