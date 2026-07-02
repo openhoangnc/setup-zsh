@@ -334,6 +334,36 @@ confirm_reinstall() {
     fi
 }
 
+is_app_running() {
+    local app_path="$1"
+    if [[ -d "$app_path" ]]; then
+        pgrep -f "$app_path" &>/dev/null
+        return $?
+    fi
+    return 1
+}
+
+kill_app() {
+    local app_path="$1"
+    if pgrep -f "$app_path" &>/dev/null; then
+        pkill -f "$app_path" 2>/dev/null || true
+        sleep 1
+        if pgrep -f "$app_path" &>/dev/null; then
+            pkill -9 -f "$app_path" 2>/dev/null || true
+        fi
+    fi
+}
+
+reopen_app_if_was_running() {
+    local app_name="$1"
+    local app_path="$2"
+    local was_running="$3"
+    if [[ "$was_running" -eq 1 && -d "$app_path" ]]; then
+        echo -e "${BLUE}Reopening ${app_name}...${NC}"
+        open "$app_path" 2>/dev/null || true
+    fi
+}
+
 install_go() {
     echo -e "${BLUE}Installing Go v${LATEST_GO}...${NC}"
     local download_url="https://dl.google.com/go/go${LATEST_GO}.darwin-${GO_ARCH}.tar.gz"
@@ -447,7 +477,11 @@ install_orb() {
     update_env_block "OrbStack" "$content"
     
     echo -e "${GREEN}✓ OrbStack v${LATEST_ORB} installed to /Applications/OrbStack.app!${NC}"
-    echo -e "${YELLOW}Please launch OrbStack to complete system setup: open -a OrbStack${NC}"
+    if [[ "$WAS_RUNNING_ORB" -eq 1 ]]; then
+        reopen_app_if_was_running "OrbStack" "/Applications/OrbStack.app" "$WAS_RUNNING_ORB"
+    else
+        echo -e "${YELLOW}Please launch OrbStack to complete system setup: open -a OrbStack${NC}"
+    fi
 }
 
 install_vscode() {
@@ -488,6 +522,7 @@ install_vscode() {
     update_env_block "VSCode" "$content"
     
     echo -e "${GREEN}✓ VSCode v${LATEST_VSCODE} installed to /Applications/Visual Studio Code.app!${NC}"
+    reopen_app_if_was_running "VSCode" "/Applications/Visual Studio Code.app" "$WAS_RUNNING_VSCODE"
 }
 
 install_python() {
@@ -610,6 +645,7 @@ install_claude() {
     rm -rf "$temp_extract_dir"
     
     echo -e "${GREEN}✓ Claude v${LATEST_CLAUDE} installed to /Applications/Claude.app!${NC}"
+    reopen_app_if_was_running "Claude" "/Applications/Claude.app" "$WAS_RUNNING_CLAUDE"
 }
 
 install_rust() {
@@ -686,6 +722,7 @@ install_compass() {
     rm -f "$temp_dmg"
     
     echo -e "${GREEN}✓ MongoDB Compass v${LATEST_COMPASS} installed to /Applications/MongoDB Compass.app!${NC}"
+    reopen_app_if_was_running "MongoDB Compass" "/Applications/MongoDB Compass.app" "$WAS_RUNNING_COMPASS"
 }
 
 install_dbeaver() {
@@ -725,6 +762,7 @@ install_dbeaver() {
     rm -f "$temp_dmg"
     
     echo -e "${GREEN}✓ DBeaver Community Edition v${LATEST_DBEAVER} installed to /Applications/DBeaver.app!${NC}"
+    reopen_app_if_was_running "DBeaver" "/Applications/DBeaver.app" "$WAS_RUNNING_DBEAVER"
 }
 
 install_chrome() {
@@ -764,6 +802,7 @@ install_chrome() {
     rm -f "$temp_dmg"
     
     echo -e "${GREEN}✓ Google Chrome v${LATEST_CHROME} installed to /Applications/Google Chrome.app!${NC}"
+    reopen_app_if_was_running "Google Chrome" "/Applications/Google Chrome.app" "$WAS_RUNNING_CHROME"
 }
 
 install_android_studio() {
@@ -810,6 +849,7 @@ install_android_studio() {
     local content="export ANDROID_HOME=\"\$HOME/Library/Android/sdk\"\nexport ANDROID_SDK_ROOT=\"\$HOME/Library/Android/sdk\"\nexport PATH=\"\$ANDROID_HOME/emulator:\$ANDROID_HOME/platform-tools:\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/tools:\$ANDROID_HOME/tools/bin:\$PATH\""
     update_env_block "AndroidStudio" "$content"
     echo -e "${GREEN}✓ Android Studio v${LATEST_ANDROID_STUDIO} installed to /Applications/Android Studio.app!${NC}"
+    reopen_app_if_was_running "Android Studio" "/Applications/Android Studio.app" "$WAS_RUNNING_ANDROID_STUDIO"
 }
 
 install_codex() {
@@ -850,6 +890,7 @@ install_codex() {
     rm -f "$temp_zip"
     
     echo -e "${GREEN}✓ Codex v${LATEST_CODEX} installed to /Applications/Codex.app!${NC}"
+    reopen_app_if_was_running "Codex" "/Applications/Codex.app" "$WAS_RUNNING_CODEX"
 }
 
 install_antigravity() {
@@ -893,6 +934,7 @@ install_antigravity() {
     rm -f "$temp_dmg"
     
     echo -e "${GREEN}✓ Antigravity v${LATEST_ANTIGRAVITY} installed to /Applications/Antigravity.app!${NC}"
+    reopen_app_if_was_running "Antigravity" "/Applications/Antigravity.app" "$WAS_RUNNING_ANTIGRAVITY"
 }
 
 # Selection states (0 = unselected, 1 = selected)
@@ -978,7 +1020,7 @@ while true; do
     show_line 9 "$(show_checkbox "$SEL_9")  9) 🟦 VSCode             $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
     
     echo -e "${PURPLE}── Database Tools ───────────────────────────────${NC}"
-    show_line 10 "$(show_checkbox "$SEL_10") 10) 🦫  DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
+    show_line 10 "$(show_checkbox "$SEL_10") 10) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
     show_line 11 "$(show_checkbox "$SEL_11") 11) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
     
     echo -e "${PURPLE}── Applications & AI ────────────────────────────${NC}"
@@ -1077,55 +1119,178 @@ while true; do
             continue
         fi
         
+        echo -e "\n${BLUE}Preparing installation...${NC}\n"
+        
+        # Check confirm_reinstall upfront for tools that are already up-to-date
+        if [ "$SEL_1" -eq 1 ] && [[ "$INST_GO" == "$LATEST_GO" ]] && ! confirm_reinstall "Go" "$LATEST_GO"; then
+            SEL_1=0
+        fi
+        if [ "$SEL_2" -eq 1 ] && [[ "$INST_NODE" == "$LATEST_NODE" ]] && ! confirm_reinstall "Node.js" "$LATEST_NODE"; then
+            SEL_2=0
+        fi
+        if [ "$SEL_3" -eq 1 ] && [[ -n "$INST_PYTHON" && -n "$INST_UV" ]] && ! confirm_reinstall "Python & uv" "$LATEST_PYTHON"; then
+            SEL_3=0
+        fi
+        if [ "$SEL_4" -eq 1 ] && [[ "$INST_RUST" == "$LATEST_RUST" ]] && ! confirm_reinstall "Rust" "$LATEST_RUST"; then
+            SEL_4=0
+        fi
+        if [ "$SEL_5" -eq 1 ] && [[ "$INST_JDK" == "$LATEST_JDK" ]] && ! confirm_reinstall "Eclipse Temurin JDK LTS" "$LATEST_JDK"; then
+            SEL_5=0
+        fi
+        if [ "$SEL_7" -eq 1 ] && [[ "$INST_ORB" == "$LATEST_ORB" ]] && ! confirm_reinstall "OrbStack" "$LATEST_ORB"; then
+            SEL_7=0
+        fi
+        if [ "$SEL_8" -eq 1 ] && [[ "$INST_ANDROID_STUDIO" == "$LATEST_ANDROID_STUDIO" ]] && ! confirm_reinstall "Android Studio" "$LATEST_ANDROID_STUDIO"; then
+            SEL_8=0
+        fi
+        if [ "$SEL_9" -eq 1 ] && [[ "$INST_VSCODE" == "$LATEST_VSCODE" ]] && ! confirm_reinstall "VSCode" "$LATEST_VSCODE"; then
+            SEL_9=0
+        fi
+        if [ "$SEL_10" -eq 1 ] && [[ "$INST_DBEAVER" == "$LATEST_DBEAVER" ]] && ! confirm_reinstall "DBeaver Community Edition" "$LATEST_DBEAVER"; then
+            SEL_10=0
+        fi
+        if [ "$SEL_11" -eq 1 ] && [[ "$INST_COMPASS" == "$LATEST_COMPASS" ]] && ! confirm_reinstall "MongoDB Compass" "$LATEST_COMPASS"; then
+            SEL_11=0
+        fi
+        if [ "$SEL_12" -eq 1 ] && [[ "$INST_ANTIGRAVITY" == "$LATEST_ANTIGRAVITY" ]] && ! confirm_reinstall "Antigravity" "$LATEST_ANTIGRAVITY"; then
+            SEL_12=0
+        fi
+        if [ "$SEL_13" -eq 1 ] && [[ "$INST_CLAUDE" == "$LATEST_CLAUDE" ]] && ! confirm_reinstall "Claude" "$LATEST_CLAUDE"; then
+            SEL_13=0
+        fi
+        if [ "$SEL_14" -eq 1 ] && [[ "$INST_CODEX" == "$LATEST_CODEX" ]] && ! confirm_reinstall "Codex" "$LATEST_CODEX"; then
+            SEL_14=0
+        fi
+        if [ "$SEL_15" -eq 1 ] && [[ "$INST_CHROME" == "$LATEST_CHROME" ]] && ! confirm_reinstall "Google Chrome" "$LATEST_CHROME"; then
+            SEL_15=0
+        fi
+
+        # Recount after up-to-date checks
+        count=0
+        for i in {1..15}; do
+            eval "val=\$SEL_$i"
+            if [ "$val" -eq 1 ]; then
+                count=$((count + 1))
+            fi
+        done
+
+        if [ "$count" -eq 0 ]; then
+            echo -e "\n${YELLOW}No tools to install or update.${NC}"
+            echo -e "\nPress Enter to return to menu..."
+            read -r
+            continue
+        fi
+
+        # Check for running GUI apps among remaining selected tools
+        WAS_RUNNING_ORB=0
+        WAS_RUNNING_ANDROID_STUDIO=0
+        WAS_RUNNING_VSCODE=0
+        WAS_RUNNING_DBEAVER=0
+        WAS_RUNNING_COMPASS=0
+        WAS_RUNNING_ANTIGRAVITY=0
+        WAS_RUNNING_CLAUDE=0
+        WAS_RUNNING_CODEX=0
+        WAS_RUNNING_CHROME=0
+
+        running_app_names=()
+        running_app_paths=()
+
+        if [ "$SEL_7" -eq 1 ] && is_app_running "/Applications/OrbStack.app"; then
+            running_app_names+=("OrbStack")
+            running_app_paths+=("/Applications/OrbStack.app")
+            WAS_RUNNING_ORB=1
+        fi
+        if [ "$SEL_8" -eq 1 ] && is_app_running "/Applications/Android Studio.app"; then
+            running_app_names+=("Android Studio")
+            running_app_paths+=("/Applications/Android Studio.app")
+            WAS_RUNNING_ANDROID_STUDIO=1
+        fi
+        if [ "$SEL_9" -eq 1 ] && is_app_running "/Applications/Visual Studio Code.app"; then
+            running_app_names+=("VSCode")
+            running_app_paths+=("/Applications/Visual Studio Code.app")
+            WAS_RUNNING_VSCODE=1
+        fi
+        if [ "$SEL_10" -eq 1 ] && is_app_running "/Applications/DBeaver.app"; then
+            running_app_names+=("DBeaver")
+            running_app_paths+=("/Applications/DBeaver.app")
+            WAS_RUNNING_DBEAVER=1
+        fi
+        if [ "$SEL_11" -eq 1 ] && is_app_running "/Applications/MongoDB Compass.app"; then
+            running_app_names+=("MongoDB Compass")
+            running_app_paths+=("/Applications/MongoDB Compass.app")
+            WAS_RUNNING_COMPASS=1
+        fi
+        if [ "$SEL_12" -eq 1 ] && is_app_running "/Applications/Antigravity.app"; then
+            running_app_names+=("Antigravity")
+            running_app_paths+=("/Applications/Antigravity.app")
+            WAS_RUNNING_ANTIGRAVITY=1
+        fi
+        if [ "$SEL_13" -eq 1 ] && is_app_running "/Applications/Claude.app"; then
+            running_app_names+=("Claude")
+            running_app_paths+=("/Applications/Claude.app")
+            WAS_RUNNING_CLAUDE=1
+        fi
+        if [ "$SEL_14" -eq 1 ] && is_app_running "/Applications/Codex.app"; then
+            running_app_names+=("Codex")
+            running_app_paths+=("/Applications/Codex.app")
+            WAS_RUNNING_CODEX=1
+        fi
+        if [ "$SEL_15" -eq 1 ] && is_app_running "/Applications/Google Chrome.app"; then
+            running_app_names+=("Google Chrome")
+            running_app_paths+=("/Applications/Google Chrome.app")
+            WAS_RUNNING_CHROME=1
+        fi
+
+        if [ ${#running_app_names[@]} -gt 0 ]; then
+            echo -e "\n${YELLOW}⚠️  Warning: The following running application(s) need to be closed to proceed with update:${NC}"
+            for app_n in "${running_app_names[@]}"; do
+                echo -e "${YELLOW}   - ${app_n}${NC}"
+            done
+            echo -n -e "${YELLOW}Do you want to close them and continue? (y/N): ${NC}"
+            read -r response
+            if [[ ! "$response" =~ ^[Yy]$ ]]; then
+                echo -e "\n${YELLOW}Installation cancelled.${NC}"
+                echo -e "\nPress Enter to return to menu..."
+                read -r
+                continue
+            fi
+
+            # User confirmed: kill all running apps
+            echo -e "${BLUE}Closing running applications...${NC}"
+            for app_p in "${running_app_paths[@]}"; do
+                kill_app "$app_p"
+            done
+        fi
+
         echo -e "\n${BLUE}Starting installation of $count selected tool(s)...${NC}\n"
         
         # 1. Go
         if [ "$SEL_1" -eq 1 ]; then
-            if [[ "$INST_GO" == "$LATEST_GO" ]] && ! confirm_reinstall "Go" "$LATEST_GO"; then
-                echo "Skipping Go."
-            else
-                install_go
-            fi
+            install_go
             echo ""
         fi
         
         # 2. Node.js
         if [ "$SEL_2" -eq 1 ]; then
-            if [[ "$INST_NODE" == "$LATEST_NODE" ]] && ! confirm_reinstall "Node.js" "$LATEST_NODE"; then
-                echo "Skipping Node.js."
-            else
-                install_node "$LATEST_NODE"
-            fi
+            install_node "$LATEST_NODE"
             echo ""
         fi
         
         # 3. Python & uv
         if [ "$SEL_3" -eq 1 ]; then
-            if [[ -n "$INST_PYTHON" && -n "$INST_UV" ]] && ! confirm_reinstall "Python & uv" "$LATEST_PYTHON"; then
-                echo "Skipping Python & uv."
-            else
-                install_python
-            fi
+            install_python
             echo ""
         fi
         
         # 4. Rust
         if [ "$SEL_4" -eq 1 ]; then
-            if [[ "$INST_RUST" == "$LATEST_RUST" ]] && ! confirm_reinstall "Rust" "$LATEST_RUST"; then
-                echo "Skipping Rust."
-            else
-                install_rust
-            fi
+            install_rust
             echo ""
         fi
         
         # 5. JDK (Eclipse Temurin LTS)
         if [ "$SEL_5" -eq 1 ]; then
-            if [[ "$INST_JDK" == "$LATEST_JDK" ]] && ! confirm_reinstall "Eclipse Temurin JDK LTS" "$LATEST_JDK"; then
-                echo "Skipping Eclipse Temurin JDK LTS."
-            else
-                install_jdk
-            fi
+            install_jdk
             echo ""
         fi
         
@@ -1137,91 +1302,55 @@ while true; do
         
         # 7. OrbStack
         if [ "$SEL_7" -eq 1 ]; then
-            if [[ "$INST_ORB" == "$LATEST_ORB" ]] && ! confirm_reinstall "OrbStack" "$LATEST_ORB"; then
-                echo "Skipping OrbStack."
-            else
-                install_orb
-            fi
+            install_orb
             echo ""
         fi
         
         # 8. Android Studio
         if [ "$SEL_8" -eq 1 ]; then
-            if [[ "$INST_ANDROID_STUDIO" == "$LATEST_ANDROID_STUDIO" ]] && ! confirm_reinstall "Android Studio" "$LATEST_ANDROID_STUDIO"; then
-                echo "Skipping Android Studio."
-            else
-                install_android_studio
-            fi
+            install_android_studio
             echo ""
         fi
         
         # 9. VSCode
         if [ "$SEL_9" -eq 1 ]; then
-            if [[ "$INST_VSCODE" == "$LATEST_VSCODE" ]] && ! confirm_reinstall "VSCode" "$LATEST_VSCODE"; then
-                echo "Skipping VSCode."
-            else
-                install_vscode
-            fi
+            install_vscode
             echo ""
         fi
         
         # 10. DBeaver
         if [ "$SEL_10" -eq 1 ]; then
-            if [[ "$INST_DBEAVER" == "$LATEST_DBEAVER" ]] && ! confirm_reinstall "DBeaver Community Edition" "$LATEST_DBEAVER"; then
-                echo "Skipping DBeaver Community Edition."
-            else
-                install_dbeaver
-            fi
+            install_dbeaver
             echo ""
         fi
         
         # 11. MongoDB Compass
         if [ "$SEL_11" -eq 1 ]; then
-            if [[ "$INST_COMPASS" == "$LATEST_COMPASS" ]] && ! confirm_reinstall "MongoDB Compass" "$LATEST_COMPASS"; then
-                echo "Skipping MongoDB Compass."
-            else
-                install_compass
-            fi
+            install_compass
             echo ""
         fi
         
         # 12. Antigravity
         if [ "$SEL_12" -eq 1 ]; then
-            if [[ "$INST_ANTIGRAVITY" == "$LATEST_ANTIGRAVITY" ]] && ! confirm_reinstall "Antigravity" "$LATEST_ANTIGRAVITY"; then
-                echo "Skipping Antigravity."
-            else
-                install_antigravity
-            fi
+            install_antigravity
             echo ""
         fi
         
         # 13. Claude
         if [ "$SEL_13" -eq 1 ]; then
-            if [[ "$INST_CLAUDE" == "$LATEST_CLAUDE" ]] && ! confirm_reinstall "Claude" "$LATEST_CLAUDE"; then
-                echo "Skipping Claude."
-            else
-                install_claude
-            fi
+            install_claude
             echo ""
         fi
         
         # 14. Codex
         if [ "$SEL_14" -eq 1 ]; then
-            if [[ "$INST_CODEX" == "$LATEST_CODEX" ]] && ! confirm_reinstall "Codex" "$LATEST_CODEX"; then
-                echo "Skipping Codex."
-            else
-                install_codex
-            fi
+            install_codex
             echo ""
         fi
         
         # 15. Google Chrome
         if [ "$SEL_15" -eq 1 ]; then
-            if [[ "$INST_CHROME" == "$LATEST_CHROME" ]] && ! confirm_reinstall "Google Chrome" "$LATEST_CHROME"; then
-                echo "Skipping Google Chrome."
-            else
-                install_chrome
-            fi
+            install_chrome
             echo ""
         fi
         
