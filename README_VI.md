@@ -43,9 +43,9 @@ source ~/.zshrc
 
 Khi bạn gõ, Zsh tự động hiện gợi ý mờ từ lịch sử lệnh.
 
-- **Khớp đầu câu**: Gõ `curl` → thấy ` -I google.com` màu xám. Nhấn `Tab` hoặc `→` để chấp nhận.
+- **Khớp đầu câu**: Gõ `curl` → thấy ` -I google.com` màu xám. Nhấn `→` hoặc `Ctrl+F` để chấp nhận.
 - **Khớp ở giữa**: Gõ `google` → thấy `» curl -I google.com`.
-  - Nhấn **`Tab`**, **`→`**, hoặc **`Ctrl+F`** để chấp nhận toàn bộ.
+  - Nhấn **`→`** hoặc **`Ctrl+F`** để chấp nhận toàn bộ.
   - Nhấn **`Option+→`** (hoặc `Alt+F`) để chấp nhận từng từ.
 - **Xem thêm kết quả**: Nhấn **Mũi tên Lên** để thay bằng kết quả khác, tiếp tục nhấn **Lên / Xuống** để duyệt hết.
 

@@ -43,9 +43,9 @@ source ~/.zshrc
 
 As you type, Zsh shows a faded suggestion from your history.
 
-- **Starts with your text**: Type `curl` → see ` -I google.com` in gray. Press `Tab` or `→` to accept.
+- **Starts with your text**: Type `curl` → see ` -I google.com` in gray. Press `→` or `Ctrl+F` to accept.
 - **Contains your text**: Type `google` → see `» curl -I google.com`.
-  - Press **`Tab`**, **`→`**, or **`Ctrl+F`** to accept the whole suggestion.
+  - Press **`→`** or **`Ctrl+F`** to accept the whole suggestion.
   - Press **`Option+→`** (or `Alt+F`) to accept one word at a time.
 - **Browse more matches**: Press **Up Arrow** to replace the line with another match, then keep pressing **Up / Down** to cycle through all matches.
 
