@@ -986,53 +986,44 @@ cleanup_cursor() {
 trap cleanup_cursor EXIT INT TERM
 
 refresh_installed_tools
-first_render=1
 printf "\033[?25l"
 
 # Main loop
 while true; do
-    if [ "$first_render" -eq 1 ]; then
-        if [[ -n "$TERM" ]]; then
-            clear
-        fi
-        first_render=0
-    else
-        printf "\033[H"
-    fi
-    echo -e "${BLUE}==================================================${NC}\033[K"
-    echo -e "${BLUE}        🛠️  setup-zsh Developer Tool Installer${NC}\033[K"
-    echo -e "${BLUE}==================================================${NC}\033[K"
-    echo -e "Use Up/Down arrows to navigate, Space/Enter to toggle selections.\033[K\n"
-    
-    echo -e "${PURPLE}── Languages & Runtimes ─────────────────────────${NC}\033[K"
-    show_line 1 "$(show_checkbox "$SEL_1")  1) 🐹 Go (Golang)        $(format_status "$INST_GO" "$LATEST_GO")"
-    show_line 2 "$(show_checkbox "$SEL_2")  2) 🟢 Node.js            $(format_status "$INST_NODE" "$LATEST_NODE")"
-    show_line 3 "$(show_checkbox "$SEL_3")  3) 🐍 Python & uv        $(format_python_status "$INST_PYTHON" "$INST_UV")"
-    show_line 4 "$(show_checkbox "$SEL_4")  4) 🦀 Rust               $(format_status "$INST_RUST" "$LATEST_RUST")"
-    show_line 5 "$(show_checkbox "$SEL_5")  5) ☕ JDK (Temurin LTS)  $(format_status "$INST_JDK" "$LATEST_JDK")"
-    
-    echo -e "${PURPLE}── Dev Tools & Infrastructure ───────────────────${NC}\033[K"
-    show_line 6 "$(show_checkbox "$SEL_6")  6) 🐙 Git                $(format_git_status "$INST_GIT")"
-    show_line 7 "$(show_checkbox "$SEL_7")  7) 🔮 OrbStack (Docker)  $(format_status "$INST_ORB" "$LATEST_ORB")"
-    
-    echo -e "${PURPLE}── IDEs & Editors ───────────────────────────────${NC}\033[K"
-    show_line 8 "$(show_checkbox "$SEL_8")  8) 🤖 Android Studio     $(format_status "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO")"
-    show_line 9 "$(show_checkbox "$SEL_9")  9) 🟦 VSCode             $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
-    
-    echo -e "${PURPLE}── Database Tools ───────────────────────────────${NC}\033[K"
-    show_line 10 "$(show_checkbox "$SEL_10") 10) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
-    show_line 11 "$(show_checkbox "$SEL_11") 11) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
-    
-    echo -e "${PURPLE}── Applications & AI ────────────────────────────${NC}\033[K"
-    show_line 12 "$(show_checkbox "$SEL_12") 12) 🚀 Antigravity        $(format_status "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY")"
-    show_line 13 "$(show_checkbox "$SEL_13") 13) 💥 Claude             $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
-    show_line 14 "$(show_checkbox "$SEL_14") 14) 🧠 Codex              $(format_status "$INST_CODEX" "$LATEST_CODEX")"
-    show_line 15 "$(show_checkbox "$SEL_15") 15) 🌐 Google Chrome      $(format_status "$INST_CHROME" "$LATEST_CHROME")"
-    echo -e "\033[K"
-    show_line 16 "[I] Install Selected Tools"
-    show_line 17 "[A] Toggle All"
-    show_line 18 "[E] Exit"
-    echo -e "${BLUE}==================================================${NC}\033[K"
+    # Buffer entire menu, then flush at once to avoid flicker
+    menu_buf=$(
+        echo -e "${BLUE}==================================================${NC}\033[K"
+        echo -e "${BLUE}        🛠️  setup-zsh Developer Tool Installer${NC}\033[K"
+        echo -e "${BLUE}==================================================${NC}\033[K"
+        echo -e "Use Up/Down arrows to navigate, Space/Enter to toggle selections.\033[K"
+        echo ""
+        echo -e "${PURPLE}── Languages & Runtimes ─────────────────────────${NC}\033[K"
+        show_line 1 "$(show_checkbox "$SEL_1")  1) 🐹 Go (Golang)        $(format_status "$INST_GO" "$LATEST_GO")"
+        show_line 2 "$(show_checkbox "$SEL_2")  2) 🟢 Node.js            $(format_status "$INST_NODE" "$LATEST_NODE")"
+        show_line 3 "$(show_checkbox "$SEL_3")  3) 🐍 Python & uv        $(format_python_status "$INST_PYTHON" "$INST_UV")"
+        show_line 4 "$(show_checkbox "$SEL_4")  4) 🦀 Rust               $(format_status "$INST_RUST" "$LATEST_RUST")"
+        show_line 5 "$(show_checkbox "$SEL_5")  5) ☕ JDK (Temurin LTS)  $(format_status "$INST_JDK" "$LATEST_JDK")"
+        echo -e "${PURPLE}── Dev Tools & Infrastructure ───────────────────${NC}\033[K"
+        show_line 6 "$(show_checkbox "$SEL_6")  6) 🐙 Git                $(format_git_status "$INST_GIT")"
+        show_line 7 "$(show_checkbox "$SEL_7")  7) 🔮 OrbStack (Docker)  $(format_status "$INST_ORB" "$LATEST_ORB")"
+        echo -e "${PURPLE}── IDEs & Editors ───────────────────────────────${NC}\033[K"
+        show_line 8 "$(show_checkbox "$SEL_8")  8) 🤖 Android Studio     $(format_status "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO")"
+        show_line 9 "$(show_checkbox "$SEL_9")  9) 🟦 VSCode             $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
+        echo -e "${PURPLE}── Database Tools ───────────────────────────────${NC}\033[K"
+        show_line 10 "$(show_checkbox "$SEL_10") 10) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
+        show_line 11 "$(show_checkbox "$SEL_11") 11) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
+        echo -e "${PURPLE}── Applications & AI ────────────────────────────${NC}\033[K"
+        show_line 12 "$(show_checkbox "$SEL_12") 12) 🚀 Antigravity        $(format_status "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY")"
+        show_line 13 "$(show_checkbox "$SEL_13") 13) 💥 Claude             $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
+        show_line 14 "$(show_checkbox "$SEL_14") 14) 🧠 Codex              $(format_status "$INST_CODEX" "$LATEST_CODEX")"
+        show_line 15 "$(show_checkbox "$SEL_15") 15) 🌐 Google Chrome      $(format_status "$INST_CHROME" "$LATEST_CHROME")"
+        echo -e "\033[K"
+        show_line 16 "[I] Install Selected Tools"
+        show_line 17 "[A] Toggle All"
+        show_line 18 "[E] Exit"
+        echo -e "${BLUE}==================================================${NC}\033[K"
+    )
+    printf '\033[2J\033[3J\033[H%s\n' "$menu_buf"
     
     # Read one character (escape sequences check)
     IFS= read -r -s -n 1 key 2>/dev/null
@@ -1362,6 +1353,5 @@ while true; do
         echo -e "\nPress Enter to return to the menu..."
         read -r
         refresh_installed_tools
-        first_render=1
     fi
 done
