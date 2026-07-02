@@ -33,7 +33,7 @@ source ~/.zshrc
 - **自动切换目录** — 直接输入路径按回车，不用打 `cd`。
 - **彩色文件列表** — 文件和目录有各自的颜色，深色和浅色背景都好看。
 - **更好的默认设置** — Tab 补全、历史记录去重、最多保存 100,000 条命令。
-- **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Go、Node.js、Python、Rust、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Claude 和 Google Chrome。用方向键选择即可。
+- **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Go、Node.js、Python、Rust、Codex、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude 和 Google Chrome。用方向键选择即可。
 
 ---
 
@@ -75,7 +75,7 @@ source ~/.zshrc
 
 **小贴士：**
 - Go 和 Node.js 安装到 `~/.local/`——不需要 `sudo`，全局安装 npm 包也不需要。
-- 桌面应用（VSCode、Claude、OrbStack、MongoDB Compass、DBeaver、Google Chrome、Android Studio）会自动下载并放入 `/Applications`。
+- 桌面应用（VSCode、Claude、OrbStack、MongoDB Compass、DBeaver、Google Chrome、Android Studio、Antigravity）会自动下载并放入 `/Applications`。
 - Git 通过 Apple 官方的 `xcode-select --install` 安装。
 - 安装器启动时会自动检查最新版本。
 

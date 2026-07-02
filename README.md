@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Auto-CD** — Type a directory path and press Enter. No need to type `cd` first.
 - **Colorful File Listings** — Files and folders get distinct colors that look good on both light and dark backgrounds.
 - **Better Defaults** — Tab completion, smarter history (no duplicates), and up to 100,000 commands saved.
-- **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Go, Node.js, Python, Rust, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Claude, and Google Chrome. Navigate with arrow keys, pick what you need.
+- **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Go, Node.js, Python, Rust, Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome. Navigate with arrow keys, pick what you need.
 
 ---
 
@@ -75,7 +75,7 @@ Run `install-dev-tool` to open an interactive menu.
 
 **Good to know:**
 - Go and Node.js install to `~/.local/` — no `sudo` needed, even for global npm packages.
-- Desktop apps (VSCode, Claude, OrbStack, MongoDB Compass, DBeaver, Google Chrome, Android Studio) are downloaded and placed in `/Applications` automatically.
+- Desktop apps (VSCode, Claude, OrbStack, MongoDB Compass, DBeaver, Google Chrome, Android Studio, Antigravity) are downloaded and placed in `/Applications` automatically.
 - Git is installed through Apple's official `xcode-select --install`.
 - The installer checks for the latest versions automatically on startup.
 
