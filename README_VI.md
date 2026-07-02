@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Tự động chuyển thư mục** — Gõ đường dẫn thư mục rồi Enter. Không cần gõ `cd`.
 - **Màu sắc file nổi bật** — File và thư mục có màu riêng, đẹp trên cả giao diện sáng lẫn tối.
 - **Cấu hình mặc định tốt hơn** — Tab completion, lịch sử không trùng lặp, lưu tới 100.000 lệnh.
-- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Go, Node.js, OrbStack, VSCode, Python, Claude, Rust, Git, MongoDB Compass, DBeaver, Google Chrome, và Android Studio. Chọn bằng phím mũi tên.
+- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Go, Node.js, Python, Rust, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Claude, và Google Chrome. Chọn bằng phím mũi tên.
 
 ---
 

@@ -33,7 +33,7 @@ source ~/.zshrc
 - **自动切换目录** — 直接输入路径按回车，不用打 `cd`。
 - **彩色文件列表** — 文件和目录有各自的颜色，深色和浅色背景都好看。
 - **更好的默认设置** — Tab 补全、历史记录去重、最多保存 100,000 条命令。
-- **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Go、Node.js、OrbStack、VSCode、Python、Claude、Rust、Git、MongoDB Compass、DBeaver、Google Chrome 和 Android Studio。用方向键选择即可。
+- **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Go、Node.js、Python、Rust、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Claude 和 Google Chrome。用方向键选择即可。
 
 ---
 

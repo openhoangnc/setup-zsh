@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Auto-CD** — Type a directory path and press Enter. No need to type `cd` first.
 - **Colorful File Listings** — Files and folders get distinct colors that look good on both light and dark backgrounds.
 - **Better Defaults** — Tab completion, smarter history (no duplicates), and up to 100,000 commands saved.
-- **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Go, Node.js, OrbStack, VSCode, Python, Claude, Rust, Git, MongoDB Compass, DBeaver, Google Chrome, and Android Studio. Navigate with arrow keys, pick what you need.
+- **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Go, Node.js, Python, Rust, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Claude, and Google Chrome. Navigate with arrow keys, pick what you need.
 
 ---
 
