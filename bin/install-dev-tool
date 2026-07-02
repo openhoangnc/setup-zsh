@@ -35,13 +35,8 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 ) &
 
 (
-    LATEST=$(curl -s https://nodejs.org/dist/index.tab | awk 'NR>1 && $10 != "-" {print $1; exit}' | sed 's/^v//' || echo "Unknown")
-    echo "$LATEST" > "$TEMP_VER_DIR/node_lts"
-) &
-
-(
     LATEST=$(curl -s https://nodejs.org/dist/index.tab | awk 'NR==2 {print $1}' | sed 's/^v//' || echo "Unknown")
-    echo "$LATEST" > "$TEMP_VER_DIR/node_curr"
+    echo "$LATEST" > "$TEMP_VER_DIR/node"
 ) &
 
 (
@@ -110,8 +105,7 @@ wait
 
 # Read latest versions
 LATEST_GO=$(cat "$TEMP_VER_DIR/go" 2>/dev/null || echo "Unknown")
-LATEST_NODE_LTS=$(cat "$TEMP_VER_DIR/node_lts" 2>/dev/null || echo "Unknown")
-LATEST_NODE_CURR=$(cat "$TEMP_VER_DIR/node_curr" 2>/dev/null || echo "Unknown")
+LATEST_NODE=$(cat "$TEMP_VER_DIR/node" 2>/dev/null || echo "Unknown")
 LATEST_ORB=$(cat "$TEMP_VER_DIR/orb" 2>/dev/null || echo "Unknown")
 LATEST_VSCODE=$(cat "$TEMP_VER_DIR/vscode" 2>/dev/null || echo "Unknown")
 LATEST_PYTHON=$(cat "$TEMP_VER_DIR/python" 2>/dev/null || echo "Unknown")
@@ -698,13 +692,13 @@ install_android_studio() {
 }
 
 # Selection states (0 = unselected, 1 = selected)
-SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0
+SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0
 CURSOR=1
 do_install=0
 
 toggle_all() {
     local any_unselected=0
-    for i in {1..13}; do
+    for i in {1..12}; do
         eval "local val=\$SEL_$i"
         if [ "$val" -eq 0 ]; then
             any_unselected=1
@@ -712,7 +706,7 @@ toggle_all() {
         fi
     done
     
-    for i in {1..13}; do
+    for i in {1..12}; do
         if [ "$any_unselected" -eq 1 ]; then
             eval "SEL_$i=1"
         else
@@ -746,30 +740,29 @@ while true; do
     
     echo -e "${PURPLE}── Languages & Runtimes ─────────────────────────${NC}"
     show_line 1 "$(show_checkbox "$SEL_1") 1) 🐹 Go (Golang)      $(format_status "$INST_GO" "$LATEST_GO")"
-    show_line 2 "$(show_checkbox "$SEL_2") 2) 🟢 Node.js (LTS)    $(format_status "$INST_NODE" "$LATEST_NODE_LTS")"
-    show_line 3 "$(show_checkbox "$SEL_3") 3) 🟢 Node.js (Current)$(format_status "$INST_NODE" "$LATEST_NODE_CURR")"
-    show_line 4 "$(show_checkbox "$SEL_4") 4) 🐍 Python           $(format_status "$INST_PYTHON" "$LATEST_PYTHON")"
-    show_line 5 "$(show_checkbox "$SEL_5") 5) 🦀 Rust             $(format_status "$INST_RUST" "$LATEST_RUST")"
+    show_line 2 "$(show_checkbox "$SEL_2") 2) 🟢 Node.js          $(format_status "$INST_NODE" "$LATEST_NODE")"
+    show_line 3 "$(show_checkbox "$SEL_3") 3) 🐍 Python           $(format_status "$INST_PYTHON" "$LATEST_PYTHON")"
+    show_line 4 "$(show_checkbox "$SEL_4") 4) 🦀 Rust             $(format_status "$INST_RUST" "$LATEST_RUST")"
     
     echo -e "${PURPLE}── Dev Tools & Infrastructure ───────────────────${NC}"
-    show_line 6 "$(show_checkbox "$SEL_6") 6) 🐙 Git              $(format_git_status "$INST_GIT")"
-    show_line 7 "$(show_checkbox "$SEL_7") 7) 🛸 OrbStack         $(format_status "$INST_ORB" "$LATEST_ORB")"
+    show_line 5 "$(show_checkbox "$SEL_5") 5) 🐙 Git              $(format_git_status "$INST_GIT")"
+    show_line 6 "$(show_checkbox "$SEL_6") 6) 🛸 OrbStack         $(format_status "$INST_ORB" "$LATEST_ORB")"
     
     echo -e "${PURPLE}── IDEs & Editors ───────────────────────────────${NC}"
-    show_line 8 "$(show_checkbox "$SEL_8") 8) 🤖 Android Studio  $(format_status "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO")"
-    show_line 9 "$(show_checkbox "$SEL_9") 9) 🟦 VSCode           $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
+    show_line 7 "$(show_checkbox "$SEL_7") 7) 🤖 Android Studio  $(format_status "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO")"
+    show_line 8 "$(show_checkbox "$SEL_8") 8) 🟦 VSCode           $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
     
     echo -e "${PURPLE}── Database Tools ───────────────────────────────${NC}"
-    show_line 10 "$(show_checkbox "$SEL_10") 10) 🐿️ DBeaver          $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
-    show_line 11 "$(show_checkbox "$SEL_11") 11) 🍃 MongoDB Compass $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
+    show_line 9 "$(show_checkbox "$SEL_9") 9) 🐿️ DBeaver          $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
+    show_line 10 "$(show_checkbox "$SEL_10") 10) 🍃 MongoDB Compass $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
     
     echo -e "${PURPLE}── Applications & AI ────────────────────────────${NC}"
-    show_line 12 "$(show_checkbox "$SEL_12") 12) 💬 Claude           $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
-    show_line 13 "$(show_checkbox "$SEL_13") 13) 🌐 Google Chrome    $(format_status "$INST_CHROME" "$LATEST_CHROME")"
+    show_line 11 "$(show_checkbox "$SEL_11") 11) 💬 Claude           $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
+    show_line 12 "$(show_checkbox "$SEL_12") 12) 🌐 Google Chrome    $(format_status "$INST_CHROME" "$LATEST_CHROME")"
     echo ""
-    show_line 14 "[I] Install Selected Tools"
-    show_line 15 "[A] Toggle All"
-    show_line 16 "[E] Exit"
+    show_line 13 "[I] Install Selected Tools"
+    show_line 14 "[A] Toggle All"
+    show_line 15 "[E] Exit"
     echo -e "${BLUE}==================================================${NC}"
     
     # Read one character (escape sequences check)
@@ -801,23 +794,23 @@ while true; do
         UP)
             CURSOR=$((CURSOR - 1))
             if [ "$CURSOR" -lt 1 ]; then
-                CURSOR=16
+                CURSOR=15
             fi
             ;;
         DOWN)
             CURSOR=$((CURSOR + 1))
-            if [ "$CURSOR" -gt 16 ]; then
+            if [ "$CURSOR" -gt 15 ]; then
                 CURSOR=1
             fi
             ;;
         SPACE|ENTER)
-            if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 13 ]; then
+            if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 12 ]; then
                 eval "SEL_$CURSOR=\$((1 - SEL_$CURSOR))"
-            elif [ "$CURSOR" -eq 14 ]; then
+            elif [ "$CURSOR" -eq 13 ]; then
                 do_install=1
-            elif [ "$CURSOR" -eq 15 ]; then
+            elif [ "$CURSOR" -eq 14 ]; then
                 toggle_all
-            elif [ "$CURSOR" -eq 16 ]; then
+            elif [ "$CURSOR" -eq 15 ]; then
                 echo -e "\n${BLUE}Goodbye!${NC}"
                 exit 0
             fi
@@ -843,7 +836,7 @@ while true; do
         
         # Count selected tools
         count=0
-        for i in {1..13}; do
+        for i in {1..12}; do
             eval "val=\$SEL_$i"
             if [ "$val" -eq 1 ]; then
                 count=$((count + 1))
@@ -869,28 +862,18 @@ while true; do
             echo ""
         fi
         
-        # 2. Node LTS
+        # 2. Node.js
         if [ "$SEL_2" -eq 1 ]; then
-            if [[ "$INST_NODE" == "$LATEST_NODE_LTS" ]] && ! confirm_reinstall "Node.js (LTS)" "$LATEST_NODE_LTS"; then
-                echo "Skipping Node.js (LTS)."
+            if [[ "$INST_NODE" == "$LATEST_NODE" ]] && ! confirm_reinstall "Node.js" "$LATEST_NODE"; then
+                echo "Skipping Node.js."
             else
-                install_node "$LATEST_NODE_LTS"
+                install_node "$LATEST_NODE"
             fi
             echo ""
         fi
         
-        # 3. Node Current
+        # 3. Python
         if [ "$SEL_3" -eq 1 ]; then
-            if [[ "$INST_NODE" == "$LATEST_NODE_CURR" ]] && ! confirm_reinstall "Node.js (Current)" "$LATEST_NODE_CURR"; then
-                echo "Skipping Node.js (Current)."
-            else
-                install_node "$LATEST_NODE_CURR"
-            fi
-            echo ""
-        fi
-        
-        # 4. Python
-        if [ "$SEL_4" -eq 1 ]; then
             if [[ "$INST_PYTHON" == "$LATEST_PYTHON" ]] && ! confirm_reinstall "Python" "$LATEST_PYTHON"; then
                 echo "Skipping Python."
             else
@@ -899,8 +882,8 @@ while true; do
             echo ""
         fi
         
-        # 5. Rust
-        if [ "$SEL_5" -eq 1 ]; then
+        # 4. Rust
+        if [ "$SEL_4" -eq 1 ]; then
             if [[ "$INST_RUST" == "$LATEST_RUST" ]] && ! confirm_reinstall "Rust" "$LATEST_RUST"; then
                 echo "Skipping Rust."
             else
@@ -909,14 +892,14 @@ while true; do
             echo ""
         fi
         
-        # 6. Git
-        if [ "$SEL_6" -eq 1 ]; then
+        # 5. Git
+        if [ "$SEL_5" -eq 1 ]; then
             install_git
             echo ""
         fi
         
-        # 7. OrbStack
-        if [ "$SEL_7" -eq 1 ]; then
+        # 6. OrbStack
+        if [ "$SEL_6" -eq 1 ]; then
             if [[ "$INST_ORB" == "$LATEST_ORB" ]] && ! confirm_reinstall "OrbStack" "$LATEST_ORB"; then
                 echo "Skipping OrbStack."
             else
@@ -925,8 +908,8 @@ while true; do
             echo ""
         fi
         
-        # 8. Android Studio
-        if [ "$SEL_8" -eq 1 ]; then
+        # 7. Android Studio
+        if [ "$SEL_7" -eq 1 ]; then
             if [[ "$INST_ANDROID_STUDIO" == "$LATEST_ANDROID_STUDIO" ]] && ! confirm_reinstall "Android Studio" "$LATEST_ANDROID_STUDIO"; then
                 echo "Skipping Android Studio."
             else
@@ -935,8 +918,8 @@ while true; do
             echo ""
         fi
         
-        # 9. VSCode
-        if [ "$SEL_9" -eq 1 ]; then
+        # 8. VSCode
+        if [ "$SEL_8" -eq 1 ]; then
             if [[ "$INST_VSCODE" == "$LATEST_VSCODE" ]] && ! confirm_reinstall "VSCode" "$LATEST_VSCODE"; then
                 echo "Skipping VSCode."
             else
@@ -945,8 +928,8 @@ while true; do
             echo ""
         fi
         
-        # 10. DBeaver
-        if [ "$SEL_10" -eq 1 ]; then
+        # 9. DBeaver
+        if [ "$SEL_9" -eq 1 ]; then
             if [[ "$INST_DBEAVER" == "$LATEST_DBEAVER" ]] && ! confirm_reinstall "DBeaver Community Edition" "$LATEST_DBEAVER"; then
                 echo "Skipping DBeaver Community Edition."
             else
@@ -955,8 +938,8 @@ while true; do
             echo ""
         fi
         
-        # 11. MongoDB Compass
-        if [ "$SEL_11" -eq 1 ]; then
+        # 10. MongoDB Compass
+        if [ "$SEL_10" -eq 1 ]; then
             if [[ "$INST_COMPASS" == "$LATEST_COMPASS" ]] && ! confirm_reinstall "MongoDB Compass" "$LATEST_COMPASS"; then
                 echo "Skipping MongoDB Compass."
             else
@@ -965,8 +948,8 @@ while true; do
             echo ""
         fi
         
-        # 12. Claude
-        if [ "$SEL_12" -eq 1 ]; then
+        # 11. Claude
+        if [ "$SEL_11" -eq 1 ]; then
             if [[ "$INST_CLAUDE" == "$LATEST_CLAUDE" ]] && ! confirm_reinstall "Claude" "$LATEST_CLAUDE"; then
                 echo "Skipping Claude."
             else
@@ -975,8 +958,8 @@ while true; do
             echo ""
         fi
         
-        # 13. Google Chrome
-        if [ "$SEL_13" -eq 1 ]; then
+        # 12. Google Chrome
+        if [ "$SEL_12" -eq 1 ]; then
             if [[ "$INST_CHROME" == "$LATEST_CHROME" ]] && ! confirm_reinstall "Google Chrome" "$LATEST_CHROME"; then
                 echo "Skipping Google Chrome."
             else
@@ -986,7 +969,7 @@ while true; do
         fi
         
         # Reset selections after installation
-        SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0
+        SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0
         
         echo -e "${GREEN}Batch installation completed!${NC}"
         echo -e "Please run ${YELLOW}source ~/.zshrc${NC} to load environment changes."
