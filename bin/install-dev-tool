@@ -862,7 +862,7 @@ while true; do
     
     echo -e "${PURPLE}── Database Tools ───────────────────────────────${NC}"
     show_line 9 "$(show_checkbox "$SEL_9")  9) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
-    show_line 10 "$(show_checkbox "$SEL_10") 10) 🍃 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
+    show_line 10 "$(show_checkbox "$SEL_10") 10) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
     
     echo -e "${PURPLE}── Applications & AI ────────────────────────────${NC}"
     show_line 11 "$(show_checkbox "$SEL_11") 11) 🚀 Antigravity        $(format_status "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY")"
