@@ -61,7 +61,7 @@ else
 	rm -rf "$SYNTAX_DIR" "$SUBSTRING_DIR" "$SUGGEST_DIR"
 	TEMP_ZIP=$(mktemp /tmp/setup-zsh.XXXXXX.zip)
 	TEMP_DIR=$(mktemp -d /tmp/setup-zsh.XXXXXX)
-	curl -L -s https://github.com/openhoangnc/setup-zsh/archive/refs/heads/main.zip -o "$TEMP_ZIP"
+	curl -fsSL https://github.com/openhoangnc/setup-zsh/archive/refs/heads/main.zip -o "$TEMP_ZIP"
 	unzip -q -o "$TEMP_ZIP" -d "$TEMP_DIR"
 	
 	mv "$TEMP_DIR"/setup-zsh-main/plugins/zsh-syntax-highlighting "$SYNTAX_DIR"
@@ -215,9 +215,26 @@ setopt HIST_VERIFY
 # Auto-CD (type directory path without cd to enter)
 setopt AUTO_CD
 
-# Enable tab completion
+# Keyboard defaults: Emacs keymap regardless of $EDITOR, plus everyday macOS keys
+bindkey -e
+bindkey '^[[H' beginning-of-line     # Home
+bindkey '^[[F' end-of-line           # End
+bindkey '^[[3~' delete-char          # Fn+Delete (forward delete)
+bindkey '^[[1;3C' forward-word       # Option+Right
+bindkey '^[[1;3D' backward-word      # Option+Left
+bindkey '^[[1;5C' forward-word       # Ctrl+Right
+bindkey '^[[1;5D' backward-word      # Ctrl+Left
+
+# Enable tab completion (full security audit at most once a day)
 autoload -Uz compinit
-compinit
+() {
+	setopt local_options extended_glob
+	if [[ ! -f $HOME/.zcompdump || -n $HOME/.zcompdump(#qN.mh+24) ]]; then
+		compinit
+	else
+		compinit -C
+	fi
+}
 
 # 2. Syntax Highlighting
 if [[ -f ~/.zsh/setup-zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]]; then
@@ -249,8 +266,9 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 	# Customize autosuggest style (clean, beautiful gray)
 	ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=244'
 
-	# Configure strategies (try match_any first, fallback to completion)
-	ZSH_AUTOSUGGEST_STRATEGY=(match_any completion)
+	# Configure strategies: exact-prefix history first, then substring (match_any).
+	# Prefix matches align with what you're typing; » substring is the fallback.
+	ZSH_AUTOSUGGEST_STRATEGY=(history match_any)
 
 
 	# -------------------------------------------------------------
@@ -325,7 +343,10 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 			return
 		fi
 
-		if [[ "$POSTDISPLAY" == " » "* ]]; then
+		if [[ -n "$_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION" ]] && \
+			[[ "$POSTDISPLAY" == " » "* || "$BUFFER" != "${_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION[1,$#BUFFER]}" ]]; then
+			# Substring or case-insensitive match: take the history entry verbatim
+			# (appending would keep the wrong-case text the user typed)
 			BUFFER="$_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION"
 		else
 			BUFFER="$BUFFER$POSTDISPLAY"
@@ -345,9 +366,11 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 		return $retval
 	}
 
-	# Override execute function (accept and run, e.g. Ctrl+F / Right Arrow)
+	# Override execute function (accept suggestion and run it; unbound by default —
+	# add widget names to ZSH_AUTOSUGGEST_EXECUTE_WIDGETS to enable)
 	_zsh_autosuggest_execute() {
-		if [[ "$POSTDISPLAY" == " » "* ]]; then
+		if [[ -n "$_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION" ]] && \
+			[[ "$POSTDISPLAY" == " » "* || "$BUFFER" != "${_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION[1,$#BUFFER]}" ]]; then
 			BUFFER="$_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION"
 		else
 			BUFFER="$BUFFER$POSTDISPLAY"
@@ -365,7 +388,7 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 
 		if [[ "$POSTDISPLAY" == " » "* ]]; then
 			# Case-insensitive index search
-			local idx=${${_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION:l}[(i)${BUFFER:l}]}
+			local idx=${${_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION:l}[(i)${(b)${BUFFER:l}}]}
 			if (( idx <= $#_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION )); then
 				BUFFER="$_ZSH_AUTOSUGGEST_CURRENT_SUGGESTION"
 				CURSOR=$((idx + $#original_buffer - 1))
@@ -401,9 +424,9 @@ if [[ -f ~/.zsh/setup-zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]
 fi
 
 # 6. Colored Prompt (Short Directory, Git status, success/failure indicator)
-autoload -Uz vcs_info
+autoload -Uz vcs_info add-zsh-hook
 precmd_vcs_info() { vcs_info }
-precmd_functions+=(precmd_vcs_info)
+add-zsh-hook precmd precmd_vcs_info
 setopt prompt_subst
 
 zstyle ':vcs_info:*' enable git
@@ -418,11 +441,16 @@ PROMPT='%F{147}%25<…<%~%<<%f${vcs_info_msg_0_} %(?.%F{121}❯%f.%F{197}❯%f) 
 # 7. Colors for LS & Directories
 export CLICOLOR=1
 export LSCOLORS="Gxfxcxdxbxegedabagacad"
+# GNU-style equivalent of LSCOLORS so completion lists match ls colors
+export LS_COLORS="di=1;36:ln=35:so=32:pi=33:ex=31:bd=34;46:cd=34;43:su=30;41:sg=30;46:tw=30;42:ow=30;43"
 
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*' menu select
+# Case-insensitive Tab completion (exact-case matches still win)
+zstyle ':completion:*' matcher-list '' 'm:{a-zA-Z}={A-Za-z}'
 
 # 8. Custom Bin & Environment
+typeset -U path PATH
 if [[ -d "$HOME/.zsh/setup-zsh/bin" ]]; then
 	export PATH="$HOME/.zsh/setup-zsh/bin:$PATH"
 fi
@@ -446,12 +474,5 @@ fi
 
 echo -e "${GREEN}✓ ~/.zshrc updated successfully!${NC}"
 
-# Source the zshrc if we are currently running inside an active Zsh shell script execution
-if [ -n "$ZSH_VERSION" ]; then
-	echo -e "${BLUE}Sourcing ~/.zshrc...${NC}"
-	source "$ZSHRC"
-	echo -e "${GREEN}✓ Applied changes to current session.${NC}"
-else
-	echo -e "${BLUE}=== Zsh Setup Complete ===${NC}"
-	echo -e "To apply the changes immediately, please run: ${GREEN}source ~/.zshrc${NC} or restart your terminal."
-fi
+echo -e "${BLUE}=== Zsh Setup Complete ===${NC}"
+echo -e "To apply the changes immediately, please run: ${GREEN}source ~/.zshrc${NC} or restart your terminal."

@@ -26,13 +26,13 @@ source ~/.zshrc
 
 ## Bạn sẽ có gì
 
-- **Gợi ý lệnh thông minh** — Gõ bất kỳ từ nào, hệ thống sẽ tìm trong lịch sử dù từ đó nằm ở giữa câu lệnh. Không phân biệt hoa/thường (gõ `GOOGLE` sẽ tìm thấy `curl -I google.com`).
+- **Gợi ý lệnh thông minh** — Các lệnh bắt đầu bằng ký tự bạn đang gõ sẽ được gợi ý trước; nếu không có lệnh nào bắt đầu như vậy, toàn bộ lịch sử sẽ được tìm kiếm để khớp ở *bất kỳ vị trí nào* trong câu lệnh, hiển thị kèm mũi tên `»`. Không phân biệt hoa/thường (gõ `GOOGLE` sẽ tìm thấy `curl -I google.com`).
 - **Duyệt lịch sử bằng phím mũi tên** — Gõ từ khóa rồi nhấn **Lên / Xuống** để xem lần lượt các lệnh chứa từ khóa đó.
 - **Highlight cú pháp** — Lệnh hợp lệ hiện màu xanh, lệnh sai hiện màu đỏ — ngay khi bạn gõ.
 - **Prompt gọn đẹp** — Hiển thị `~/đường/dẫn (branch*) ❯`. Trong thư mục Git, bạn thấy tên nhánh và trạng thái thay đổi. Mũi tên chuyển hồng nếu lệnh trước bị lỗi.
 - **Tự động chuyển thư mục** — Gõ đường dẫn thư mục rồi Enter. Không cần gõ `cd`.
 - **Màu sắc file nổi bật** — File và thư mục có màu riêng, đẹp trên cả giao diện sáng lẫn tối.
-- **Cấu hình mặc định tốt hơn** — Tab completion, lịch sử không trùng lặp, lưu tới 100.000 lệnh.
+- **Cấu hình mặc định tốt hơn** — Tab completion không phân biệt hoa/thường, lịch sử thông minh hơn (không trùng lặp), lưu tới 100.000 lệnh, và các phím thường dùng hoạt động đúng ý (Home / End / Fn+Delete / Option+Mũi tên để nhảy theo từng từ).
 - **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, và Google Chrome. Chọn bằng phím mũi tên.
 
 ---
@@ -41,13 +41,15 @@ source ~/.zshrc
 
 ### 1. Gợi ý lệnh thông minh
 
-Khi bạn gõ, Zsh tự động hiện gợi ý mờ từ lịch sử lệnh.
+Khi bạn gõ, Zsh tự động hiện gợi ý mờ từ lịch sử lệnh. Gợi ý **bắt đầu bằng** ký tự bạn gõ được ưu tiên; khi không có lệnh nào bắt đầu như vậy, lệnh gần nhất **chứa** ký tự đó sẽ hiển thị sau mũi tên `»`.
 
 - **Khớp đầu câu**: Gõ `curl` → thấy ` -I google.com` màu xám. Nhấn `→` hoặc `Ctrl+F` để chấp nhận.
 - **Khớp ở giữa**: Gõ `google` → thấy `» curl -I google.com`.
   - Nhấn **`→`** hoặc **`Ctrl+F`** để chấp nhận toàn bộ.
   - Nhấn **`Option+→`** (hoặc `Alt+F`) để chấp nhận từng từ.
 - **Xem thêm kết quả**: Nhấn **Mũi tên Lên** để thay bằng kết quả khác, tiếp tục nhấn **Lên / Xuống** để duyệt hết.
+
+> ⚠️ **Enter luôn chạy đúng những gì bạn đã gõ** — không bao giờ chạy gợi ý mờ. Để chạy gợi ý `»`, hãy chấp nhận nó trước bằng `→` (hoặc `Ctrl+F`), rồi nhấn Enter.
 
 ### 2. Tự động chuyển thư mục
 
@@ -56,6 +58,8 @@ Gõ đường dẫn rồi nhấn Enter:
 ~/Downloads  # chuyển đến ~/Downloads
 ..           # lùi lại một cấp
 ```
+
+> Nếu tên thư mục trùng với tên một lệnh (ví dụ `test`), lệnh sẽ được ưu tiên chạy. Thêm dấu gạch chéo phía sau để buộc chuyển thư mục: `test/`.
 
 ### 3. Prompt hiển thị Git
 
@@ -70,12 +74,13 @@ Chạy `install-dev-tool` để mở menu tương tác.
 ![install-dev-tool](install-dev-tool.png)
 
 - **Di chuyển**: Dùng phím **Lên / Xuống / Trái / Phải** để di chuyển con trỏ (`❯`).
-- **Chọn công cụ**: Nhấn **Space** hoặc **Enter** để đánh dấu chọn (`[ ]` ↔ `[✓]`).
+- **Chọn công cụ**: Nhấn **Space** hoặc **Enter** để đánh dấu chọn (`[ ]` ↔ `[✓]`), hoặc gõ số thứ tự của công cụ (với các mục 10–17, gõ nhanh cả hai chữ số).
 - **Thao tác (gộp trên 1 dòng ở dưới)**:
   - **Cài đặt**: Chuyển đến `[I] Install` rồi nhấn **Enter** (hoặc gõ `I`).
   - **Chọn tất cả**: Chuyển đến `[A] Toggle All` rồi nhấn **Enter** (hoặc gõ `A`).
-  - **Cập nhật tất cả bản cũ**: Chuyển đến `[U] Select Outdated` rồi nhấn **Enter** (hoặc gõ `U`), hoặc chạy `install-dev-tool --update-all` trực tiếp từ terminal.
-  - **Thoát**: Chuyển đến `[E] Exit` rồi nhấn **Enter** (hoặc gõ `E`).
+  - **Cập nhật tất cả bản cũ**: Chuyển đến `[U] Select Outdated` rồi nhấn **Enter** (hoặc gõ `U`), hoặc chạy `install-dev-tool --update-all` trực tiếp từ terminal (lệnh sẽ tự thoát khi hoàn tất).
+  - **Thoát**: Chuyển đến `[E] Exit` rồi nhấn **Enter** (hoặc gõ `E`, `Q`, `Esc`, hoặc `Ctrl+C`).
+- **Tùy chọn CLI**: `install-dev-tool --help` liệt kê tất cả tùy chọn (`-u/--update-all`, `-a/--all`).
 
 **Lưu ý thêm:**
 - Bun được cài qua script chính thức (`https://bun.sh/install`) vào `~/.bun/bin`.

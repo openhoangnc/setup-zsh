@@ -26,13 +26,13 @@ source ~/.zshrc
 
 ## What You Get
 
-- **Smart Autosuggestions** — Type any word and get suggestions from your history, even if it appears in the middle of a command. Case doesn't matter (e.g., typing `GOOGLE` finds `curl -I google.com`).
+- **Smart Autosuggestions** — Commands you're starting to type are suggested first; if nothing starts with your text, your whole history is searched for it *anywhere* in a command, shown with a `»` arrow. Case doesn't matter (e.g., typing `GOOGLE` finds `curl -I google.com`).
 - **History Search with Arrow Keys** — Type a keyword, then press **Up / Down** to scroll through every past command that contains it.
 - **Syntax Highlighting** — Commands turn green if valid, red if not — in real time as you type.
 - **Clean Prompt** — Shows `~/short/path (branch*) ❯`. Inside a Git repo, you see the branch name and whether you have uncommitted changes. The arrow turns pink if the last command failed.
 - **Auto-CD** — Type a directory path and press Enter. No need to type `cd` first.
 - **Colorful File Listings** — Files and folders get distinct colors that look good on both light and dark backgrounds.
-- **Better Defaults** — Tab completion, smarter history (no duplicates), and up to 100,000 commands saved.
+- **Better Defaults** — Case-insensitive Tab completion, smarter history (no duplicates), up to 100,000 commands saved, and everyday keys that just work (Home / End / Fn+Delete / Option+Arrow word jumps).
 - **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome. Navigate with arrow keys, pick what you need.
 
 ---
@@ -41,13 +41,15 @@ source ~/.zshrc
 
 ### 1. Smart Autosuggestions
 
-As you type, Zsh shows a faded suggestion from your history.
+As you type, Zsh shows a faded suggestion from your history. Suggestions that **start with** your text are preferred; when nothing starts with it, the most recent command **containing** it is shown after a `»` arrow.
 
 - **Starts with your text**: Type `curl` → see ` -I google.com` in gray. Press `→` or `Ctrl+F` to accept.
 - **Contains your text**: Type `google` → see `» curl -I google.com`.
   - Press **`→`** or **`Ctrl+F`** to accept the whole suggestion.
   - Press **`Option+→`** (or `Alt+F`) to accept one word at a time.
 - **Browse more matches**: Press **Up Arrow** to replace the line with another match, then keep pressing **Up / Down** to cycle through all matches.
+
+> ⚠️ **Enter always runs exactly what you typed** — never the faded suggestion. To run a `»` suggestion, accept it first with `→` (or `Ctrl+F`), then press Enter.
 
 ### 2. Auto-CD
 
@@ -56,6 +58,8 @@ Just type a path and press Enter:
 ~/Downloads  # goes to ~/Downloads
 ..           # goes up one folder
 ```
+
+> If a folder shares its name with a command (e.g. `test`), the command wins. Add a slash to force the cd: `test/`.
 
 ### 3. Git-Aware Prompt
 
@@ -70,12 +74,13 @@ Run `install-dev-tool` to open an interactive menu.
 ![install-dev-tool](install-dev-tool.png)
 
 - **Navigate**: Use **Up / Down / Left / Right** arrow keys to move the cursor (`❯`).
-- **Select tools**: Press **Space** or **Enter** to check/uncheck a tool (`[ ]` ↔ `[✓]`).
+- **Select tools**: Press **Space** or **Enter** to check/uncheck a tool (`[ ]` ↔ `[✓]`), or type its number (for items 10–17, type both digits quickly).
 - **Actions (single line at bottom)**:
   - **Install**: Move to `[I] Install` and press **Enter** (or type `I`).
   - **Select all**: Move to `[A] Toggle All` and press **Enter** (or type `A`).
-  - **Update all outdated**: Move to `[U] Select Outdated` and press **Enter** (or type `U`), or run `install-dev-tool --update-all` directly from your terminal.
-  - **Quit**: Move to `[E] Exit` and press **Enter** (or type `E`).
+  - **Update all outdated**: Move to `[U] Select Outdated` and press **Enter** (or type `U`), or run `install-dev-tool --update-all` from your terminal (it exits when done).
+  - **Quit**: Move to `[E] Exit` and press **Enter** (or type `E`, `Q`, `Esc`, or `Ctrl+C`).
+- **CLI flags**: `install-dev-tool --help` lists all options (`-u/--update-all`, `-a/--all`).
 
 **Good to know:**
 - Bun installs via its official script (`https://bun.sh/install`) to `~/.bun/bin`.
