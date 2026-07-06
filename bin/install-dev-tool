@@ -148,7 +148,15 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 ) &
 
 (
-    LATEST=$(curl -s --max-time 10 https://api.github.com/repos/Homebrew/brew/releases/latest | grep -o '"tag_name": "[^"]*"' | head -n 1 | cut -d'"' -f4 | sed 's/^v//' || echo "Unknown")
+    # Homebrew has no formulae.brew.sh entry (it's the package manager, not a
+    # formula), so we read its version from GitHub. Prefer the releases.atom
+    # feed served by github.com: unlike api.github.com it is not subject to the
+    # 60-requests/hour unauthenticated rate limit that made this the first check
+    # to intermittently fail. Fall back to the API only if the feed yields nothing.
+    LATEST=$(curl -s --max-time 10 https://github.com/Homebrew/brew/releases.atom | grep -o 'releases/tag/[^"<]*' | head -n 1 | sed 's#releases/tag/##; s/^v//')
+    if [ -z "$LATEST" ]; then
+        LATEST=$(curl -s --max-time 10 https://api.github.com/repos/Homebrew/brew/releases/latest | grep -o '"tag_name": "[^"]*"' | head -n 1 | cut -d'"' -f4 | sed 's/^v//')
+    fi
     echo "$LATEST" > "$TEMP_VER_DIR/homebrew"
 ) &
 
