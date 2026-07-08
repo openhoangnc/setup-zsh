@@ -29,7 +29,7 @@ source ~/.zshrc
 - **Gợi ý lệnh thông minh** — Các lệnh bắt đầu bằng ký tự bạn đang gõ sẽ được gợi ý trước; nếu không có lệnh nào bắt đầu như vậy, toàn bộ lịch sử sẽ được tìm kiếm để khớp ở *bất kỳ vị trí nào* trong câu lệnh, hiển thị kèm mũi tên `»`. Không phân biệt hoa/thường (gõ `GOOGLE` sẽ tìm thấy `curl -I google.com`).
 - **Duyệt lịch sử bằng phím mũi tên** — Gõ từ khóa rồi nhấn **Lên / Xuống** để xem lần lượt các lệnh chứa từ khóa đó.
 - **Highlight cú pháp** — Lệnh hợp lệ hiện màu xanh, lệnh sai hiện màu đỏ — ngay khi bạn gõ.
-- **Prompt gọn đẹp** — Hiển thị `~/đường/dẫn (branch*) ❯`. Trong thư mục Git, bạn thấy tên nhánh và trạng thái thay đổi. Mũi tên chuyển hồng nếu lệnh trước bị lỗi.
+- **Prompt gọn đẹp** — Hiển thị `~/đường/dẫn (branch*) ↑1 ↓2 ❯`. Trong thư mục Git, bạn thấy tên nhánh, trạng thái thay đổi và số commit vượt trước/chậm hơn remote. Mũi tên chuyển hồng nếu lệnh trước bị lỗi.
 - **Tự động chuyển thư mục** — Gõ đường dẫn thư mục rồi Enter. Không cần gõ `cd`.
 - **Màu sắc file nổi bật** — File và thư mục có màu riêng, đẹp trên cả giao diện sáng lẫn tối.
 - **Cấu hình mặc định tốt hơn** — Tab completion không phân biệt hoa/thường, lịch sử thông minh hơn (không trùng lặp), lưu tới 100.000 lệnh, và các phím thường dùng hoạt động đúng ý (Home / End / Fn+Delete / Option+Mũi tên để nhảy theo từng từ).
@@ -63,8 +63,9 @@ Gõ đường dẫn rồi nhấn Enter:
 
 ### 3. Prompt hiển thị Git
 
-- Hiển thị `~/đường/dẫn (branch*) ❯ `. Đường dẫn dài sẽ được tự động rút gọn.
+- Hiển thị `~/đường/dẫn (branch*) ↑1 ↓2 ❯ `. Đường dẫn dài sẽ được tự động rút gọn.
 - Dấu `*` hồng = có thay đổi chưa stage. Dấu `+` xanh = có thay đổi đã stage.
+- `↑N` xanh = vượt trước remote N commit (cần push). `↓N` hồng = chậm hơn N commit (cần pull). Ẩn khi đã đồng bộ.
 - Mũi tên `❯` chuyển hồng nếu lệnh cuối bị lỗi.
 
 ### 4. Cài đặt công cụ lập trình (`install-dev-tool`)

@@ -29,7 +29,7 @@ source ~/.zshrc
 - **Smart Autosuggestions** — Commands you're starting to type are suggested first; if nothing starts with your text, your whole history is searched for it *anywhere* in a command, shown with a `»` arrow. Case doesn't matter (e.g., typing `GOOGLE` finds `curl -I google.com`).
 - **History Search with Arrow Keys** — Type a keyword, then press **Up / Down** to scroll through every past command that contains it.
 - **Syntax Highlighting** — Commands turn green if valid, red if not — in real time as you type.
-- **Clean Prompt** — Shows `~/short/path (branch*) ❯`. Inside a Git repo, you see the branch name and whether you have uncommitted changes. The arrow turns pink if the last command failed.
+- **Clean Prompt** — Shows `~/short/path (branch*) ↑1 ↓2 ❯`. Inside a Git repo, you see the branch name, whether you have uncommitted changes, and how many commits you're ahead/behind the remote. The arrow turns pink if the last command failed.
 - **Auto-CD** — Type a directory path and press Enter. No need to type `cd` first.
 - **Colorful File Listings** — Files and folders get distinct colors that look good on both light and dark backgrounds.
 - **Better Defaults** — Case-insensitive Tab completion, smarter history (no duplicates), up to 100,000 commands saved, and everyday keys that just work (Home / End / Fn+Delete / Option+Arrow word jumps).
@@ -63,8 +63,9 @@ Just type a path and press Enter:
 
 ### 3. Git-Aware Prompt
 
-- Shows `~/short/path (branch*) ❯ `. Long paths are automatically truncated.
+- Shows `~/short/path (branch*) ↑1 ↓2 ❯ `. Long paths are automatically truncated.
 - Pink `*` = you have unstaged changes. Green `+` = you have staged changes.
+- Green `↑N` = N commits ahead of the remote (to push). Pink `↓N` = N commits behind (to pull). Hidden when in sync.
 - Arrow `❯` turns pink if the last command failed.
 
 ### 4. Dev Tools Installer (`install-dev-tool`)

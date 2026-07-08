@@ -433,8 +433,18 @@ zstyle ':vcs_info:*' enable git
 zstyle ':vcs_info:git:*' check-for-changes true
 zstyle ':vcs_info:git:*' unstagedstr '%F{197}*%f'
 zstyle ':vcs_info:git:*' stagedstr '%F{121}+%f'
-zstyle ':vcs_info:git:*' formats ' %F{242}(%F{81}%b%u%c%F{242})%f'
-zstyle ':vcs_info:git:*' actionformats ' %F{242}(%F{81}%b%F{197}|%a%u%c%F{242})%f'
+zstyle ':vcs_info:git:*' formats ' %F{242}(%F{81}%b%u%c%F{242})%f%m'
+zstyle ':vcs_info:git:*' actionformats ' %F{242}(%F{81}%b%F{197}|%a%u%c%F{242})%f%m'
+
+# Upstream sync status (fish-style): ↑N commits ahead to push, ↓N behind to pull
+zstyle ':vcs_info:git*+set-message:*' hooks git-aheadbehind
++vi-git-aheadbehind() {
+	local ab
+	ab=$(command git rev-list --count --left-right @{upstream}...HEAD 2>/dev/null) || return
+	local behind=${ab[(w)1]} ahead=${ab[(w)2]}
+	(( ahead )) && hook_com[misc]+=" %F{121}↑${ahead}%f"
+	(( behind )) && hook_com[misc]+=" %F{197}↓${behind}%f"
+}
 
 PROMPT='%F{147}%25<…<%~%<<%f${vcs_info_msg_0_} %(?.%F{121}❯%f.%F{197}❯%f) '
 
