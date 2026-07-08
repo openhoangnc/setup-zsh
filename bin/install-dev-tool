@@ -342,15 +342,45 @@ format_status() {
 format_python_status() {
     local py_inst="$1"
     local uv_inst="$2"
+    local py_latest="$3"
+    local uv_latest="$4"
+
     if [[ -z "$py_inst" && -z "$uv_inst" ]]; then
         echo -e "${RED}[Not Installed]${NC}"
-    elif [[ -n "$py_inst" && -n "$uv_inst" ]]; then
-        echo -e "${GREEN}[Installed: Py v$py_inst | uv v$uv_inst]${NC}"
-    elif [[ -n "$py_inst" ]]; then
-        echo -e "${YELLOW}[Installed: Py v$py_inst | uv missing]${NC}"
-    else
-        echo -e "${YELLOW}[Installed: uv v$uv_inst | Python3 missing]${NC}"
+        return
     fi
+
+    # Build a per-component fragment: "(Latest)" when current, "-> vX" when an
+    # upgrade is available, bare version when the latest couldn't be determined.
+    local py_frag uv_frag
+    if [[ -z "$py_inst" ]]; then
+        py_frag="Python3 missing"
+    elif [[ -z "$py_latest" || "$py_latest" == "Unknown" ]]; then
+        py_frag="Py v$py_inst"
+    elif [[ "$py_inst" == "$py_latest" ]]; then
+        py_frag="Py v$py_inst (Latest)"
+    else
+        py_frag="Py v$py_inst -> v$py_latest"
+    fi
+    if [[ -z "$uv_inst" ]]; then
+        uv_frag="uv missing"
+    elif [[ -z "$uv_latest" || "$uv_latest" == "Unknown" ]]; then
+        uv_frag="uv v$uv_inst"
+    elif [[ "$uv_inst" == "$uv_latest" ]]; then
+        uv_frag="uv v$uv_inst (Latest)"
+    else
+        uv_frag="uv v$uv_inst -> v$uv_latest"
+    fi
+
+    # Yellow whenever something is missing or outdated, green only when both are current.
+    local color="$GREEN"
+    if [[ -z "$py_inst" || -z "$uv_inst" ]] \
+        || is_outdated "$py_inst" "$py_latest" \
+        || is_outdated "$uv_inst" "$uv_latest"; then
+        color="$YELLOW"
+    fi
+
+    echo -e "${color}[Installed: ${py_frag} | ${uv_frag}]${NC}"
 }
 
 format_git_status() {
@@ -1227,7 +1257,7 @@ while true; do
             show_line 2 "$(show_checkbox "$SEL_2")  2) 🐹 Go (Golang)        $(format_status "$INST_GO" "$LATEST_GO")"
             show_line 3 "$(show_checkbox "$SEL_3")  3) ☕ JDK (Temurin LTS)  $(format_status "$INST_JDK" "$LATEST_JDK")"
             show_line 4 "$(show_checkbox "$SEL_4")  4) 🟢 Node.js            $(format_status "$INST_NODE" "$LATEST_NODE")"
-            show_line 5 "$(show_checkbox "$SEL_5")  5) 🐍 Python & uv        $(format_python_status "$INST_PYTHON" "$INST_UV")"
+            show_line 5 "$(show_checkbox "$SEL_5")  5) 🐍 Python & uv        $(format_python_status "$INST_PYTHON" "$INST_UV" "$LATEST_PYTHON" "$LATEST_UV")"
             show_line 6 "$(show_checkbox "$SEL_6")  6) 🦀 Rust               $(format_status "$INST_RUST" "$LATEST_RUST")"
             echo -e "${PURPLE}── Dev Tools & Infrastructure ───────────────────${NC}\033[K"
             show_line 7 "$(show_checkbox "$SEL_7")  7) 🐙 Git                $(format_git_status "$INST_GIT")"
