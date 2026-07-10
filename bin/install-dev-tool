@@ -560,22 +560,71 @@ install_go() {
     echo -e "${GREEN}✓ Go v${LATEST_GO} installed successfully!${NC}"
 }
 
+preserve_node_globals() {
+    # Carry user-installed global npm packages (and their bin launchers) from an
+    # existing Node.js tree into a freshly extracted one so an upgrade does not
+    # lose them. Globals live in lib/node_modules/<pkg> with launcher symlinks in
+    # bin/; the bundled npm/corepack are left as shipped by the new version.
+    # Exact versions are preserved (no re-download), so this also works offline.
+    local old_root="$1" new_root="$2"
+    local old_mods="$old_root/lib/node_modules"
+    local new_mods="$new_root/lib/node_modules"
+    [[ -d "$old_mods" ]] || return 0
+    mkdir -p "$new_mods"
+
+    local entry name sub
+    for entry in "$old_mods"/*; do
+        [[ -e "$entry" ]] || continue
+        name=$(basename "$entry")
+        case "$name" in
+            npm|corepack|.bin) continue ;;
+        esac
+        if [[ "$name" == @* ]]; then
+            # Scoped packages: preserve each @scope/<pkg> individually so the new
+            # tree keeps every scoped global (e.g. @angular/cli).
+            mkdir -p "$new_mods/$name"
+            for sub in "$entry"/*; do
+                [[ -e "$sub" ]] || continue
+                rm -rf "$new_mods/$name/$(basename "$sub")"
+                cp -R "$sub" "$new_mods/$name/" 2>/dev/null || true
+            done
+        else
+            rm -rf "$new_mods/$name"
+            cp -R "$entry" "$new_mods/" 2>/dev/null || true
+        fi
+    done
+
+    # Recreate the bin/ launcher symlinks for the carried-over packages, leaving
+    # the new Node's own launchers (node/npm/npx/corepack) untouched. The links
+    # are relative (e.g. ../lib/node_modules/<pkg>/bin/cli.js), so they resolve
+    # correctly once the tree lands at its final ~/.local/node location.
+    local bin binname target
+    for bin in "$old_root/bin"/*; do
+        [[ -L "$bin" ]] || continue
+        binname=$(basename "$bin")
+        case "$binname" in
+            node|npm|npx|corepack) continue ;;
+        esac
+        [[ -e "$new_root/bin/$binname" || -L "$new_root/bin/$binname" ]] && continue
+        target=$(readlink "$bin")
+        ln -s "$target" "$new_root/bin/$binname" 2>/dev/null || true
+    done
+}
+
 install_node() {
     local version="$1"
     require_latest "Node.js" "$version" || return 1
     echo -e "${BLUE}Installing Node.js v${version}...${NC}"
     local download_url="https://nodejs.org/dist/v${version}/node-v${version}-darwin-${NODE_ARCH}.tar.gz"
     local temp_tar=$(mktemp /tmp/node.XXXXXX.tar.gz)
-    
+
     echo "Downloading ${download_url}..."
     if ! curl -fL --progress-bar "$download_url" -o "$temp_tar"; then
         echo -e "${RED}Error: Failed to download Node.js.${NC}"
         return 1
     fi
-    
-    echo "Extracting to ~/.local/node..."
-    mkdir -p "$HOME/.local"
-    rm -rf "$HOME/.local/node"
+
+    echo "Extracting Node.js..."
     local temp_extract_dir
     temp_extract_dir=$(mktemp -d /tmp/node_extract.XXXXXX)
     if ! tar -xzf "$temp_tar" -C "$temp_extract_dir"; then
@@ -584,16 +633,45 @@ install_node() {
         rm -rf "$temp_extract_dir"
         return 1
     fi
-    
-    mv "$temp_extract_dir"/node-v${version}-darwin-${NODE_ARCH} "$HOME/.local/node"
-    
+    local new_node="$temp_extract_dir/node-v${version}-darwin-${NODE_ARCH}"
+
+    # Preserve globally-installed npm packages before replacing the old tree, so
+    # upgrading Node.js never wipes them (previously `rm -rf ~/.local/node` did).
+    local preserved_globals=0
+    if [[ -d "$HOME/.local/node/lib/node_modules" ]]; then
+        echo "Preserving global npm packages..."
+        preserve_node_globals "$HOME/.local/node" "$new_node"
+        preserved_globals=1
+    fi
+
+    echo "Installing to ~/.local/node..."
+    mkdir -p "$HOME/.local"
+    rm -rf "$HOME/.local/node"
+    if ! mv "$new_node" "$HOME/.local/node"; then
+        echo -e "${RED}Error: Failed to move Node.js into ~/.local/node.${NC}"
+        rm -f "$temp_tar"
+        rm -rf "$temp_extract_dir"
+        return 1
+    fi
+
     rm -f "$temp_tar"
     rm -rf "$temp_extract_dir"
-    
+
     echo "Updating env.zsh..."
     local content="export PATH=\"\$HOME/.local/node/bin:\$PATH\""
     update_env_block "Node" "$content"
-    
+
+    # Rebuild the carried-over globals against the new Node ABI so packages with
+    # native addons keep working across a major version bump. Pure-JS packages
+    # are a fast no-op. Best-effort: problems here do not fail the install, and
+    # npm is invoked from the new tree so its global prefix is ~/.local/node.
+    if [[ "$preserved_globals" -eq 1 && -x "$HOME/.local/node/bin/npm" ]]; then
+        echo "Rebuilding global npm packages for the new Node.js version..."
+        if ! PATH="$HOME/.local/node/bin:$PATH" "$HOME/.local/node/bin/npm" rebuild -g; then
+            echo -e "${YELLOW}Warning: 'npm rebuild -g' reported problems. If a global tool with native addons misbehaves, reinstall it with 'npm install -g <pkg>'.${NC}"
+        fi
+    fi
+
     echo -e "${GREEN}✓ Node.js v${version} installed successfully!${NC}"
     echo -e "${YELLOW}Note: Global npm packages will be installed under ~/.local/node without requiring sudo!${NC}"
 }
