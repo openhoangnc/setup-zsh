@@ -770,49 +770,77 @@ install_vscode() {
 }
 
 install_python() {
-    require_latest "Python" "$LATEST_PYTHON" || return 1
-    echo -e "${BLUE}Installing Python v${LATEST_PYTHON}...${NC}"
-    local download_url="https://www.python.org/ftp/python/${LATEST_PYTHON}/python-${LATEST_PYTHON}-macos11.pkg"
-    local temp_pkg=$(mktemp /tmp/python.XXXXXX.pkg)
-    
-    echo "Downloading ${download_url}..."
-    if ! curl -fL --progress-bar "$download_url" -o "$temp_pkg"; then
-        echo -e "${RED}Error: Failed to download Python.${NC}"
-        return 1
+    # Decide per component what actually needs installing. Python and uv version
+    # independently, so a uv bump must not drag the whole Python pkg (and its sudo
+    # prompt) along. When the pair is already current we only reach here via an
+    # explicit re-install confirmation, so refresh both; otherwise touch only
+    # what is missing or outdated.
+    local need_python=0 need_uv=0
+    if python_outdated; then
+        { [[ -z "$INST_PYTHON" ]] || is_outdated "$INST_PYTHON" "$LATEST_PYTHON"; } && need_python=1
+        { [[ -z "$INST_UV" ]] || is_outdated "$INST_UV" "$LATEST_UV"; } && need_uv=1
+    else
+        need_python=1
+        need_uv=1
     fi
-    
-    echo -e "${YELLOW}This installation requires administrator privileges. Please enter your password when prompted.${NC}"
-    if ! sudo installer -pkg "$temp_pkg" -target /; then
-        echo -e "${RED}Error: Failed to install Python pkg.${NC}"
+
+    if [[ "$need_python" -eq 1 ]]; then
+        require_latest "Python" "$LATEST_PYTHON" || return 1
+        echo -e "${BLUE}Installing Python v${LATEST_PYTHON}...${NC}"
+        local download_url="https://www.python.org/ftp/python/${LATEST_PYTHON}/python-${LATEST_PYTHON}-macos11.pkg"
+        local temp_pkg=$(mktemp /tmp/python.XXXXXX.pkg)
+
+        echo "Downloading ${download_url}..."
+        if ! curl -fL --progress-bar "$download_url" -o "$temp_pkg"; then
+            echo -e "${RED}Error: Failed to download Python.${NC}"
+            return 1
+        fi
+
+        echo -e "${YELLOW}This installation requires administrator privileges. Please enter your password when prompted.${NC}"
+        if ! sudo installer -pkg "$temp_pkg" -target /; then
+            echo -e "${RED}Error: Failed to install Python pkg.${NC}"
+            rm -f "$temp_pkg"
+            return 1
+        fi
+
         rm -f "$temp_pkg"
-        return 1
+    else
+        echo -e "${GREEN}Python v${INST_PYTHON} is already up-to-date. Skipping.${NC}"
     fi
-    
-    rm -f "$temp_pkg"
-    
-    echo -e "${BLUE}Installing uv (Python package installer v${LATEST_UV})...${NC}"
-    mkdir -p "$HOME/.local/bin"
-    if ! curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$HOME/.local/bin" sh; then
-        echo -e "${YELLOW}Warning: Failed to install uv via installer script, attempting fallback...${NC}"
-        local uv_arch="aarch64"
-        if [ "$ARCH" = "x86_64" ]; then
-            uv_arch="x86_64"
+
+    if [[ "$need_uv" -eq 1 ]]; then
+        echo -e "${BLUE}Installing uv (Python package installer v${LATEST_UV})...${NC}"
+        mkdir -p "$HOME/.local/bin"
+        if ! curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$HOME/.local/bin" sh; then
+            echo -e "${YELLOW}Warning: Failed to install uv via installer script, attempting fallback...${NC}"
+            local uv_arch="aarch64"
+            if [ "$ARCH" = "x86_64" ]; then
+                uv_arch="x86_64"
+            fi
+            local uv_url="https://github.com/astral-sh/uv/releases/download/${LATEST_UV}/uv-${uv_arch}-apple-darwin.tar.gz"
+            local temp_uv_tar=$(mktemp /tmp/uv.XXXXXX.tar.gz)
+            if curl -fL --progress-bar "$uv_url" -o "$temp_uv_tar"; then
+                local temp_uv_extract=$(mktemp -d /tmp/uv_extract.XXXXXX)
+                tar -xzf "$temp_uv_tar" -C "$temp_uv_extract"
+                mv "$temp_uv_extract"/uv-${uv_arch}-apple-darwin/uv* "$HOME/.local/bin/" 2>/dev/null || true
+                rm -rf "$temp_uv_tar" "$temp_uv_extract"
+            fi
         fi
-        local uv_url="https://github.com/astral-sh/uv/releases/download/${LATEST_UV}/uv-${uv_arch}-apple-darwin.tar.gz"
-        local temp_uv_tar=$(mktemp /tmp/uv.XXXXXX.tar.gz)
-        if curl -fL --progress-bar "$uv_url" -o "$temp_uv_tar"; then
-            local temp_uv_extract=$(mktemp -d /tmp/uv_extract.XXXXXX)
-            tar -xzf "$temp_uv_tar" -C "$temp_uv_extract"
-            mv "$temp_uv_extract"/uv-${uv_arch}-apple-darwin/uv* "$HOME/.local/bin/" 2>/dev/null || true
-            rm -rf "$temp_uv_tar" "$temp_uv_extract"
-        fi
+    else
+        echo -e "${GREEN}uv v${INST_UV} is already up-to-date. Skipping.${NC}"
     fi
-    
+
     echo "Updating env.zsh..."
     local content="export PATH=\"\$HOME/.local/bin:\$PATH\"\nalias python=\"python3\"\nalias pip=\"pip3\""
     update_env_block "Python" "$content"
-    
-    echo -e "${GREEN}✓ Python v${LATEST_PYTHON} and uv v${LATEST_UV} installed successfully!${NC}"
+
+    if [[ "$need_python" -eq 1 && "$need_uv" -eq 1 ]]; then
+        echo -e "${GREEN}✓ Python v${LATEST_PYTHON} and uv v${LATEST_UV} installed successfully!${NC}"
+    elif [[ "$need_python" -eq 1 ]]; then
+        echo -e "${GREEN}✓ Python v${LATEST_PYTHON} installed successfully!${NC}"
+    else
+        echo -e "${GREEN}✓ uv v${LATEST_UV} installed successfully!${NC}"
+    fi
 }
 
 install_jdk() {
@@ -1538,7 +1566,7 @@ while true; do
         if [ "$SEL_4" -eq 1 ] && [[ "$INST_NODE" == "$LATEST_NODE" ]] && ! confirm_reinstall "Node.js" "$LATEST_NODE"; then
             SEL_4=0
         fi
-        if [ "$SEL_5" -eq 1 ] && [[ -n "$INST_PYTHON" && -n "$INST_UV" ]] && ! confirm_reinstall "Python & uv" "$LATEST_PYTHON"; then
+        if [ "$SEL_5" -eq 1 ] && [[ -n "$INST_PYTHON" && -n "$INST_UV" ]] && ! python_outdated && ! confirm_reinstall "Python & uv" "$LATEST_PYTHON"; then
             SEL_5=0
         fi
         if [ "$SEL_6" -eq 1 ] && [[ "$INST_RUST" == "$LATEST_RUST" ]] && ! confirm_reinstall "Rust" "$LATEST_RUST"; then
