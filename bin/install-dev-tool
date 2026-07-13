@@ -128,7 +128,13 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 ) &
 
 (
-    LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/android-studio.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4 | cut -d',' -f1 || echo "Unknown")
+    # The cask exposes Google's full marketing version (e.g. "2026.1.1.10,quail1-patch2"),
+    # but the installed app's Info.plist only reports its feature-release version
+    # (CFBundleShortVersionString, e.g. "2026.1"). Truncate to the feature release
+    # (YYYY.N) so the two are comparable — otherwise every check falsely reports an
+    # upgrade. Patch updates within a feature release are handled by Android Studio's
+    # own auto-updater.
+    LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/android-studio.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4 | cut -d',' -f1 | cut -d'.' -f1,2 || echo "Unknown")
     echo "$LATEST" > "$TEMP_VER_DIR/android_studio"
 ) &
 
