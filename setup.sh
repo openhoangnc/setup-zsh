@@ -459,14 +459,12 @@ zstyle ':completion:*' menu select
 # Case-insensitive Tab completion (exact-case matches still win)
 zstyle ':completion:*' matcher-list '' 'm:{a-zA-Z}={A-Za-z}'
 
-# 8. Custom Bin & Environment
+# 8. PATH de-duplication
+# The environment itself (PATH additions, GOROOT, ANDROID_HOME, ...) is set in
+# ~/.zshenv so that non-interactive shells and tools (editors, IDEs, `zsh -c`)
+# inherit it too — ~/.zshrc is read only by interactive shells. See the
+# setup-zsh block appended to ~/.zshenv below.
 typeset -U path PATH
-if [[ -d "$HOME/.zsh/setup-zsh/bin" ]]; then
-	export PATH="$HOME/.zsh/setup-zsh/bin:$PATH"
-fi
-if [[ -f "$HOME/.zsh/setup-zsh/env.zsh" ]]; then
-	source "$HOME/.zsh/setup-zsh/env.zsh"
-fi
 # <<< setup-zsh <<<
 EOF
 
@@ -483,6 +481,59 @@ if [[ -n "$ORIGINAL_RC" ]]; then
 fi
 
 echo -e "${GREEN}✓ ~/.zshrc updated successfully!${NC}"
+
+# 10. Create/refresh ~/.zshenv so the environment is available to ALL zsh
+#     invocations — login, interactive, scripts, and non-interactive tools
+#     (editors, IDEs, cron, `zsh -c ...`). ~/.zshrc is sourced only by
+#     interactive shells, so PATH additions placed there are invisible to
+#     anything that spawns a non-interactive zsh. Sourcing env.zsh from
+#     ~/.zshenv is what makes node/go/etc. resolve for those tools.
+echo -e "${BLUE}Updating ~/.zshenv for non-interactive shells...${NC}"
+ZSHENV="$HOME/.zshenv"
+ORIGINAL_ENV=""
+if [[ -f "$ZSHENV" ]]; then
+	ORIGINAL_ENV=$(mktemp /tmp/zshenv_original.XXXXXX)
+	cp "$ZSHENV" "$ORIGINAL_ENV"
+else
+	touch "$ZSHENV"
+fi
+
+# Clean existing setup-zsh block to allow safe re-runs
+TEMP_ENV=$(mktemp /tmp/zshenv.XXXXXX)
+awk '/# >>> setup-zsh >>>/{p=1;next}/# <<< setup-zsh <<</{p=0;next}!p' "$ZSHENV" > "$TEMP_ENV"
+mv "$TEMP_ENV" "$ZSHENV"
+
+cat << 'EOF' >> "$ZSHENV"
+# >>> setup-zsh >>>
+# -------------------------------------------------------------
+# Environment for ALL zsh invocations (Managed by setup-zsh)
+# -------------------------------------------------------------
+# ~/.zshenv is sourced by every zsh — login, interactive, scripts, and
+# non-interactive tools (editors, IDEs, `zsh -c ...`). Keep this file limited
+# to environment setup; interactive-only config (history, keybindings, prompt,
+# plugins) lives in ~/.zshrc.
+typeset -U path PATH
+if [[ -d "$HOME/.zsh/setup-zsh/bin" ]]; then
+	export PATH="$HOME/.zsh/setup-zsh/bin:$PATH"
+fi
+if [[ -f "$HOME/.zsh/setup-zsh/env.zsh" ]]; then
+	source "$HOME/.zsh/setup-zsh/env.zsh"
+fi
+# <<< setup-zsh <<<
+EOF
+
+# Backup only if content actually changed
+if [[ -n "$ORIGINAL_ENV" ]]; then
+	if diff -q "$ZSHENV" "$ORIGINAL_ENV" > /dev/null 2>&1; then
+		echo -e "${GREEN}✓ ~/.zshenv is already up to date, no backup needed.${NC}"
+	else
+		BACKUP_ENV="$ZSHENV.bak.$(date +%Y%m%d%H%M%S)"
+		echo -e "${BLUE}Backing up original .zshenv to $BACKUP_ENV...${NC}"
+		cp "$ORIGINAL_ENV" "$BACKUP_ENV"
+	fi
+	rm -f "$ORIGINAL_ENV"
+fi
+echo -e "${GREEN}✓ ~/.zshenv updated successfully!${NC}"
 
 echo -e "${BLUE}=== Zsh Setup Complete ===${NC}"
 echo -e "To apply the changes immediately, please run: ${GREEN}source ~/.zshrc${NC} or restart your terminal."
