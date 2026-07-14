@@ -1145,6 +1145,16 @@ install_android_studio() {
 
     echo "Updating env.zsh with Android SDK environment variables..."
     local content="export ANDROID_HOME=\"\$HOME/Library/Android/sdk\"\nexport ANDROID_SDK_ROOT=\"\$HOME/Library/Android/sdk\"\nexport PATH=\"\$ANDROID_HOME/emulator:\$ANDROID_HOME/platform-tools:\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/tools:\$ANDROID_HOME/tools/bin:\$PATH\""
+
+    # Android Studio bundles a JetBrains Runtime (a full JDK). Use it as a JAVA_HOME
+    # fallback only when nothing else has set it — the Temurin JDK block sets
+    # JAVA_HOME unconditionally, so an installed JDK always wins regardless of the
+    # order these blocks are sourced. Verify the JBR exists before writing the block,
+    # and re-check at shell startup in case Android Studio is later removed.
+    local jbr_home="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+    if [[ -d "$jbr_home" ]]; then
+        content="${content}\nif [[ -z \"\$JAVA_HOME\" && -d \"${jbr_home}\" ]]; then\n  export JAVA_HOME=\"${jbr_home}\"\n  export PATH=\"\$JAVA_HOME/bin:\$PATH\"\nfi"
+    fi
     update_env_block "AndroidStudio" "$content"
     echo -e "${GREEN}✓ Android Studio v${LATEST_ANDROID_STUDIO} installed to /Applications/Android Studio.app!${NC}"
     reopen_app_if_was_running "Android Studio" "/Applications/Android Studio.app" "$WAS_RUNNING_ANDROID_STUDIO"
