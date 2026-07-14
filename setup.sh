@@ -59,7 +59,10 @@ if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/plugins/zsh-autosuggestions" && -d "$S
 else
 	echo -e "${BLUE}Downloading plugins from openhoangnc/setup-zsh repository...${NC}"
 	rm -rf "$SYNTAX_DIR" "$SUBSTRING_DIR" "$SUGGEST_DIR"
-	TEMP_ZIP=$(mktemp /tmp/setup-zsh.XXXXXX.zip)
+	# No .zip suffix: BSD mktemp (macOS) only substitutes TRAILING Xs, so a
+	# "setup-zsh.XXXXXX.zip" template is taken literally (no randomization) and
+	# would collide on reruns; unzip reads magic bytes, so the extension is moot.
+	TEMP_ZIP=$(mktemp /tmp/setup-zsh.XXXXXX)
 	TEMP_DIR=$(mktemp -d /tmp/setup-zsh.XXXXXX)
 	curl -fsSL https://github.com/openhoangnc/setup-zsh/archive/refs/heads/main.zip -o "$TEMP_ZIP"
 	unzip -q -o "$TEMP_ZIP" -d "$TEMP_DIR"

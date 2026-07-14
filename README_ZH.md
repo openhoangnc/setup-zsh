@@ -33,7 +33,7 @@ source ~/.zshrc
 - **自动切换目录** — 直接输入路径按回车，不用打 `cd`。
 - **彩色文件列表** — 文件和目录有各自的颜色，深色和浅色背景都好看。
 - **更好的默认设置** — Tab 补全不区分大小写、更智能的历史记录（自动去重）、最多保存 100,000 条命令，以及开箱即用的常用按键（Home / End / Fn+Delete / Option+方向键按单词跳转）。
-- **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Bun、Go、Homebrew、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude 和 Google Chrome。用方向键选择即可。
+- **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Bun、Go、Homebrew、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude、Google Chrome 和 OmniDiskSweeper。用方向键选择即可。
 
 ---
 
@@ -89,7 +89,7 @@ source ~/.zshrc
 - Homebrew 通过其官方脚本 (`https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`) 安装并自动配置 `shellenv`。
 - Python 会与 `uv`（Astral 出品的高性能 Python 包与项目管理器）一起安装。
 - JDK 安装官方 Eclipse Temurin LTS 版本并自动配置 `JAVA_HOME`。
-- 桌面应用（VSCode、Claude、OrbStack、MongoDB Compass、DBeaver、Google Chrome、Android Studio、Antigravity）会自动下载并放入 `/Applications`。
+- 桌面应用（VSCode、Claude、OrbStack、MongoDB Compass、DBeaver、Google Chrome、Android Studio、Antigravity、OmniDiskSweeper）会自动下载并放入 `/Applications`。
 - Git 通过 Apple 官方的 `xcode-select --install` 安装。
 - 安装器启动时会自动检查最新版本。
 
