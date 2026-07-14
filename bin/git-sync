@@ -1,0 +1,310 @@
+#!/bin/bash
+
+# git-sync — keep your main and develop branches in sync with the remote.
+#
+# Fast-forwards local `main` (or master) and `develop` (or dev) to match their
+# remote counterparts. Never rewrites history: branches that have diverged are
+# reported and left untouched. With --push, both branches are pushed afterwards.
+#
+# With --cross, it also merges the two branches into each other (dev → main and
+# main → dev) so they share history. Off-branch merges are done with merge-tree
+# plumbing, so nothing is checked out and your working tree is left alone.
+#
+# Because this lives on PATH as `git-sync`, Git also exposes it as `git sync`.
+
+set -u
+
+# ---- Colors (only when writing to a terminal) ------------------------------
+if [ -t 1 ]; then
+	RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[0;33m'
+	BLUE=$'\033[0;34m'; CYAN=$'\033[0;36m'; DIM=$'\033[2m'; NC=$'\033[0m'
+else
+	RED=; GREEN=; YELLOW=; BLUE=; CYAN=; DIM=; NC=
+fi
+
+ok()      { echo "  ${GREEN}✓${NC} $*"; }
+updated() { echo "  ${GREEN}⬆${NC} $*"; }
+note()    { echo "  ${DIM}•${NC} ${DIM}$*${NC}"; }
+warn()    { echo "  ${YELLOW}!${NC} $*"; }
+err()     { echo "${RED}Error:${NC} $*" >&2; }
+
+# ---- Options ---------------------------------------------------------------
+PUSH=0
+DRY=0
+CROSS=0
+REMOTE="origin"
+MAIN_OVERRIDE=""
+DEV_OVERRIDE=""
+
+usage() {
+	cat <<EOF
+${CYAN}git-sync${NC} — fast-forward your main and develop branches to the remote.
+
+${YELLOW}Usage:${NC}
+  git-sync [options]        (also works as: git sync)
+
+${YELLOW}Options:${NC}
+  -p, --push              push both branches to the remote after syncing
+  -x, --cross             merge dev into main and main into dev (share history)
+  -n, --dry-run           show what would happen, change nothing
+      --main <name>       main branch name (default: auto-detect main/master)
+      --dev  <name>       develop branch name (default: auto-detect develop/dev)
+      --remote <name>     remote to sync with (default: origin)
+  -h, --help              show this help
+
+${YELLOW}Behavior:${NC}
+  • Fetches the remote, then fast-forwards each local branch to its upstream.
+  • Your current branch and working changes are preserved — no branch switching.
+  • Diverged branches are reported and left untouched (never force-updated).
+  • Missing branches are skipped with a note.
+  • With --cross, dev and main are merged into each other after syncing. A
+    merge commit is created only when histories diverged; conflicts are
+    reported and left untouched. Needs Git 2.38+ for off-branch merges.
+EOF
+}
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-p|--push)    PUSH=1 ;;
+		-x|--cross)   CROSS=1 ;;
+		-n|--dry-run) DRY=1 ;;
+		--main)       shift; MAIN_OVERRIDE="${1:-}" ;;
+		--main=*)     MAIN_OVERRIDE="${1#*=}" ;;
+		--dev|--develop) shift; DEV_OVERRIDE="${1:-}" ;;
+		--dev=*)      DEV_OVERRIDE="${1#*=}" ;;
+		--develop=*)  DEV_OVERRIDE="${1#*=}" ;;
+		--remote)     shift; REMOTE="${1:-origin}" ;;
+		--remote=*)   REMOTE="${1#*=}" ;;
+		-h|--help)    usage; exit 0 ;;
+		*) err "unknown option: $1"; echo; usage; exit 2 ;;
+	esac
+	shift
+done
+
+# ---- Preconditions ---------------------------------------------------------
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+	err "not inside a Git repository."
+	exit 1
+fi
+
+if ! git remote get-url "$REMOTE" >/dev/null 2>&1; then
+	err "remote '$REMOTE' not found. Add one with: git remote add $REMOTE <url>"
+	exit 1
+fi
+
+# Current branch ("" when detached — then no branch is treated as current).
+CURRENT="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+
+has_local()  { git show-ref --verify --quiet "refs/heads/$1"; }
+has_remote() { git show-ref --verify --quiet "refs/remotes/$REMOTE/$1"; }
+
+# run <cmd...> — execute, or just print under --dry-run.
+run() {
+	if [ "$DRY" -eq 1 ]; then
+		echo "  ${DIM}[dry-run]${NC} $*"
+		return 0
+	fi
+	"$@"
+}
+
+# Pick the first existing branch name from a candidate list.
+detect_branch() {
+	local candidate
+	for candidate in "$@"; do
+		if has_local "$candidate" || has_remote "$candidate"; then
+			echo "$candidate"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# ---- Fetch -----------------------------------------------------------------
+# Always fetch (read-only) — even under --dry-run — so the plan reflects the
+# real remote state instead of stale remote-tracking refs.
+echo "${BLUE}Fetching ${REMOTE}…${NC}"
+if ! git fetch --prune "$REMOTE"; then
+	err "git fetch failed."
+	exit 1
+fi
+
+# ---- Resolve branch names --------------------------------------------------
+if [ -n "$MAIN_OVERRIDE" ]; then
+	MAIN="$MAIN_OVERRIDE"
+else
+	MAIN="$(detect_branch main master || true)"
+fi
+if [ -n "$DEV_OVERRIDE" ]; then
+	DEV="$DEV_OVERRIDE"
+else
+	DEV="$(detect_branch develop dev || true)"
+fi
+
+if [ -z "$MAIN" ] && [ -z "$DEV" ]; then
+	err "could not find a main/master or develop/dev branch to sync."
+	echo "       Use --main <name> and/or --dev <name> to name them explicitly." >&2
+	exit 1
+fi
+
+# sync_branch <name> — fast-forward one branch to its remote counterpart.
+sync_branch() {
+	local b="$1"
+	[ -z "$b" ] && return 0
+
+	if ! has_remote "$b"; then
+		if has_local "$b"; then
+			note "$b: no $REMOTE/$b upstream (local-only, left as is)"
+		else
+			note "$b: not found locally or on $REMOTE — skipped"
+		fi
+		return 0
+	fi
+
+	# Remote branch exists; create the local branch if it's missing.
+	if ! has_local "$b"; then
+		if run git branch --track "$b" "$REMOTE/$b"; then
+			updated "$b: created from $REMOTE/$b"
+		fi
+		return 0
+	fi
+
+	local local_sha remote_sha
+	local_sha="$(git rev-parse "$b")"
+	remote_sha="$(git rev-parse "$REMOTE/$b")"
+
+	if [ "$local_sha" = "$remote_sha" ]; then
+		ok "$b: already up to date"
+		return 0
+	fi
+
+	if git merge-base --is-ancestor "$b" "$REMOTE/$b"; then
+		# Local is behind and can fast-forward.
+		if [ "$b" = "$CURRENT" ]; then
+			if run git merge --ff-only --quiet "$REMOTE/$b"; then
+				updated "$b: fast-forwarded to $REMOTE/$b"
+			else
+				warn "$b: cannot fast-forward the checked-out branch (uncommitted changes?) — skipped"
+			fi
+		else
+			if run git update-ref "refs/heads/$b" "$remote_sha" "$local_sha"; then
+				updated "$b: fast-forwarded to $REMOTE/$b"
+			else
+				warn "$b: could not update ref — skipped"
+			fi
+		fi
+	elif git merge-base --is-ancestor "$REMOTE/$b" "$b"; then
+		note "$b: ahead of $REMOTE/$b by $(git rev-list --count "$REMOTE/$b..$b") — nothing to pull"
+	else
+		warn "$b: diverged from $REMOTE/$b — resolve manually (left untouched)"
+	fi
+}
+
+# cross_merge <from> <into> — merge branch <from> into branch <into>, creating a
+# merge commit when their histories have diverged. Works even when <into> is not
+# the checked-out branch, using merge-tree plumbing (no branch switching).
+cross_merge() {
+	local from="$1" into="$2"
+	{ [ -z "$from" ] || [ -z "$into" ]; } && return 0
+
+	if ! has_local "$from" || ! has_local "$into"; then
+		note "$into ← $from: needs both local branches — skipped"
+		return 0
+	fi
+
+	local into_sha from_sha
+	into_sha="$(git rev-parse "$into")"
+	from_sha="$(git rev-parse "$from")"
+
+	# Nothing to do if <into> already contains every commit from <from>.
+	if git merge-base --is-ancestor "$from" "$into"; then
+		ok "$into ← $from: already up to date"
+		return 0
+	fi
+
+	# Fast-forward when <into> is strictly behind <from>.
+	if git merge-base --is-ancestor "$into" "$from"; then
+		if [ "$into" = "$CURRENT" ]; then
+			if run git merge --ff-only --quiet "$from"; then
+				updated "$into ← $from: fast-forwarded"
+			else
+				warn "$into ← $from: cannot fast-forward the checked-out branch (uncommitted changes?) — skipped"
+			fi
+		else
+			if run git update-ref "refs/heads/$into" "$from_sha" "$into_sha"; then
+				updated "$into ← $from: fast-forwarded"
+			else
+				warn "$into ← $from: could not update ref — skipped"
+			fi
+		fi
+		return 0
+	fi
+
+	# Histories diverged — a real merge commit is needed.
+	if [ "$into" = "$CURRENT" ]; then
+		# Merge in the working tree of the checked-out branch.
+		if run git merge --no-edit "$from"; then
+			updated "$into ← $from: merged"
+		else
+			run git merge --abort 2>/dev/null || true
+			warn "$into ← $from: merge conflict — resolve manually (left untouched)"
+		fi
+		return 0
+	fi
+
+	# <into> is not checked out: merge without touching the working tree.
+	local merged_tree
+	if ! merged_tree="$(git merge-tree --write-tree "$into" "$from" 2>/dev/null)"; then
+		warn "$into ← $from: merge conflict — resolve manually (left untouched)"
+		return 0
+	fi
+	if [ "$DRY" -eq 1 ]; then
+		echo "  ${DIM}[dry-run]${NC} git commit-tree (merge $from into $into) + update-ref"
+		updated "$into ← $from: would merge"
+		return 0
+	fi
+	local merge_commit
+	if merge_commit="$(git commit-tree "$merged_tree" -p "$into_sha" -p "$from_sha" -m "Merge $from into $into")" \
+		&& git update-ref "refs/heads/$into" "$merge_commit" "$into_sha"; then
+		updated "$into ← $from: merged"
+	else
+		warn "$into ← $from: could not record merge — skipped"
+	fi
+}
+
+echo "${BLUE}Syncing branches…${NC}"
+[ -n "$MAIN" ] && sync_branch "$MAIN"
+[ -n "$DEV" ]  && sync_branch "$DEV"
+
+# ---- Cross-merge -----------------------------------------------------------
+if [ "$CROSS" -eq 1 ]; then
+	if [ -n "$MAIN" ] && [ -n "$DEV" ]; then
+		echo "${BLUE}Cross-merging ${MAIN} and ${DEV}…${NC}"
+		# dev → main first, so main → dev then carries the resulting merge too.
+		cross_merge "$DEV" "$MAIN"
+		cross_merge "$MAIN" "$DEV"
+	else
+		warn "cross-merge needs both a main and a develop branch — skipped"
+	fi
+fi
+
+# ---- Push ------------------------------------------------------------------
+if [ "$PUSH" -eq 1 ]; then
+	echo "${BLUE}Pushing to ${REMOTE}…${NC}"
+	push_branch() {
+		local b="$1"
+		[ -z "$b" ] && return 0
+		if ! has_local "$b"; then
+			note "$b: no local branch to push"
+			return 0
+		fi
+		if run git push "$REMOTE" "$b"; then
+			ok "$b: pushed to $REMOTE"
+		else
+			warn "$b: push failed (diverged or no permission)"
+		fi
+	}
+	[ -n "$MAIN" ] && push_branch "$MAIN"
+	[ -n "$DEV" ]  && push_branch "$DEV"
+fi
+
+echo "${GREEN}Done.${NC}"
