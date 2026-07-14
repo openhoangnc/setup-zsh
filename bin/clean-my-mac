@@ -976,6 +976,9 @@ selected_kb()    { local i t=0; for i in $(cat_indices); do [ "${CAT_SEL[$i]}" =
 # ---------------------------------------------------------------------------
 CURSOR=0
 SCROLL=0
+# Set by the SIGWINCH trap (terminal resized), consumed by the interactive loop
+# to trigger a redraw at the new size. Cleared just before each blocking read.
+NEED_REDRAW=0
 # Terminal size. Primary source is `stty size` (reads the tty on fd 0, which the
 # interactive loop keeps connected) — unlike `tput lines/cols`, which query the
 # *output* fd and therefore return the static terminfo default (usually 24x80)
@@ -1027,9 +1030,9 @@ render_menu() {
     buf+="${BLUE}🧹 ${BOLD}clean-my-mac${NC}${BLUE} — reclaim your disk${NC}${tag}\033[K\n"
     buf+="Selected ${BOLD}${sel_c}${NC}/${N}   Reclaimable ${BOLD}${GREEN}$(human_kb "$sel_kb")${NC}\033[K\n"
     if [ "$DRY_RUN" -eq 1 ]; then
-        buf+="${DIM}↑↓${NC} move · ${BOLD}Space${NC} toggle · ${BOLD}a${NC}/${BOLD}s${NC}/${BOLD}n${NC} all/safe/none · ${BOLD}d${NC} paths · ${BOLD}q${NC} quit\033[K\n"
+        buf+="[${DIM}↑↓${NC}] move · [${BOLD}Space${NC}] toggle · [${BOLD}a${NC}]/[${BOLD}s${NC}]/[${BOLD}n${NC}] all/safe/none · [${BOLD}d${NC}] paths · [${BOLD}q${NC}] quit\033[K\n"
     else
-        buf+="${DIM}↑↓${NC} move · ${BOLD}Space${NC} toggle · ${BOLD}a${NC}/${BOLD}s${NC}/${BOLD}n${NC} all/safe/none · ${BOLD}d${NC} details · ${BOLD}c${NC} clean · ${BOLD}q${NC} quit\033[K\n"
+        buf+="[${DIM}↑↓${NC}] move · [${BOLD}Space${NC}] toggle · [${BOLD}a${NC}]/[${BOLD}s${NC}]/[${BOLD}n${NC}] all/safe/none · [${BOLD}d${NC}] details · [${BOLD}c${NC}] clean · [${BOLD}q${NC}] quit\033[K\n"
     fi
 
     local i last=$((SCROLL + viewport - 1)); [ "$last" -ge "$N" ] && last=$((N - 1))
@@ -1059,6 +1062,18 @@ render_menu() {
     buf+="${DIM}${desc//%/%%}${NC}\033[K\n"
     printf '\033[H\033[2J'
     printf "$buf"
+}
+
+# wait_any_key — block until a real keypress. On shells whose read returns when
+# a trapped SIGWINCH (terminal resize) fires, that wake carries no key; absorb it
+# so a resize never dismisses a "press any key" prompt. (On bash 3.2 read simply
+# restarts, so this just blocks until a key — same intended effect.) Stops on a
+# real key or on stdin EOF.
+wait_any_key() {
+    while ! IFS= read -r -s -n 1 _ 2>/dev/null; do
+        [ "${NEED_REDRAW:-0}" = 1 ] || break
+        NEED_REDRAW=0
+    done
 }
 
 show_details() {
@@ -1107,7 +1122,7 @@ ${CAT_PATHS[$i]}
 EOF
     fi
     printf '\n%s' "${DIM}Press any key to return...${NC}"
-    IFS= read -r -s -n 1 _ 2>/dev/null
+    wait_any_key
 }
 
 toggle_all() { local t="$1" i; for i in $(cat_indices); do CAT_SEL[$i]="$t"; done; }
@@ -1203,7 +1218,13 @@ run_cleanup() {
         echo
         [ "$PLAN_HAS_PERMANENT" -eq 1 ] && echo "${YELLOW}Items marked DELETE / EMPTY TRASH are removed permanently.${NC}"
         printf '%s' "Proceed? (y/N): "
-        local reply; IFS= read -r reply
+        # Retry on a SIGWINCH-interrupted read so a terminal resize while the
+        # prompt is up doesn't count as a (cancelling) empty answer.
+        local reply=""
+        while ! IFS= read -r reply; do
+            [ "${NEED_REDRAW:-0}" = 1 ] || break
+            NEED_REDRAW=0
+        done
         case "$reply" in y|Y|yes|YES) : ;; *) echo "${BLUE}Cancelled. Nothing was touched.${NC}"; return 1 ;; esac
     fi
 
@@ -1334,10 +1355,28 @@ if [ "$ASSUME_YES" -eq 1 ]; then
 fi
 
 # ---- Interactive menu ------------------------------------------------------
+# Redraw on terminal resize. A SIGWINCH sets NEED_REDRAW; the read below polls
+# with a 1s timeout because bash 3.2's read does NOT return early when a signal
+# fires (it restarts) — so we can't rely on the trap interrupting the read and
+# instead wake at least once a second to act on the flag. To avoid flicker the
+# menu is re-rendered only when something changed ($dirty): a keypress or resize.
+trap 'NEED_REDRAW=1' WINCH
 printf '\033[?25l'
+dirty=1
 while true; do
-    render_menu
-    IFS= read -r -s -n 1 key 2>/dev/null || { echo; exit 0; }
+    [ "$dirty" = 1 ] && { render_menu; dirty=0; }
+    SECONDS=0
+    if ! IFS= read -r -s -n 1 -t 1 key 2>/dev/null; then
+        # No key: a resize, an idle 1s timeout, or EOF. Redraw on a resize.
+        if [ "$NEED_REDRAW" = 1 ]; then NEED_REDRAW=0; dirty=1; continue; fi
+        # bash 3.2 returns 1 for BOTH a timeout and EOF; tell them apart by the
+        # elapsed wall-clock — a full 1s timeout advances $SECONDS, whereas a
+        # closed stdin (EOF / Ctrl-D) returns instantly.
+        [ "$SECONDS" -lt 1 ] && { echo; exit 0; }
+        continue
+    fi
+    NEED_REDRAW=0
+    dirty=1
     action=""
     if [ "$key" = $'\e' ]; then
         next=""; read -r -s -n 2 -t 1 next 2>/dev/null
@@ -1366,7 +1405,7 @@ while true; do
             else
                 if run_cleanup; then
                     echo; printf '%s' "${DIM}Press any key to return to the menu...${NC}"
-                    IFS= read -r -s -n 1 _ 2>/dev/null
+                    wait_any_key
                     printf '%s' " ${CYAN}Rescanning...${NC} "
                     build_categories; printf '\r\033[K'
                     [ "$N" -eq 0 ] && { printf '\033[?25h'; printf '\033[H\033[2J'; echo "${GREEN}All clean!${NC}"; exit 0; }
@@ -1375,7 +1414,7 @@ while true; do
                     CURSOR=0; SCROLL=0
                 else
                     echo; printf '%s' "${DIM}Press any key to return to the menu...${NC}"
-                    IFS= read -r -s -n 1 _ 2>/dev/null
+                    wait_any_key
                 fi
                 printf '\033[?25l'
             fi
