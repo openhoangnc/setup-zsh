@@ -1,0 +1,189 @@
+{
+  "title": "Developer caches & build artifacts",
+  "_comment": "Regenerable caches created by developer tools. method: rm = delete permanently, rmforce = chmod +w then delete (for read-only caches like Go modules & Cargo sources). Paths may use ~ and * globs. default:true = pre-selected.",
+  "categories": [
+    {
+      "icon": "🛠️",
+      "name": "Xcode derived data & device support",
+      "method": "rm",
+      "default": true,
+      "desc": "Xcode build cache, archives & device-support — rebuilt on next build.",
+      "paths": [
+        "~/Library/Developer/Xcode/DerivedData",
+        "~/Library/Developer/Xcode/Archives",
+        "~/Library/Developer/Xcode/iOS DeviceSupport",
+        "~/Library/Developer/Xcode/watchOS DeviceSupport",
+        "~/Library/Developer/Xcode/tvOS DeviceSupport",
+        "~/Library/Developer/CoreSimulator/Caches"
+      ]
+    },
+    {
+      "icon": "🐹",
+      "name": "Go build & tooling cache",
+      "method": "rm",
+      "default": true,
+      "desc": "go build/test cache and gopls/goimports indexes — regenerated on build.",
+      "paths": [
+        "~/Library/Caches/go-build",
+        "~/Library/Caches/gopls",
+        "~/Library/Caches/goimports"
+      ]
+    },
+    {
+      "icon": "🐹",
+      "name": "Go module cache",
+      "method": "rmforce",
+      "default": true,
+      "desc": "Downloaded Go modules ($GOPATH/pkg/mod) — re-fetched on next 'go build'.",
+      "paths": [
+        "~/go/pkg/mod"
+      ]
+    },
+    {
+      "icon": "🟢",
+      "name": "Node / npm cache",
+      "method": "rm",
+      "default": true,
+      "desc": "npm download cache, logs & node-gyp/TypeScript caches — re-fetched on install.",
+      "paths": [
+        "~/.npm/_cacache",
+        "~/.npm/_logs",
+        "~/Library/Caches/node-gyp",
+        "~/Library/Caches/typescript"
+      ]
+    },
+    {
+      "icon": "📦",
+      "name": "pnpm store",
+      "method": "rm",
+      "default": true,
+      "desc": "pnpm's content-addressable package store — re-downloaded on next install.",
+      "paths": [
+        "~/Library/pnpm/store",
+        "~/Library/Caches/pnpm",
+        "~/.local/share/pnpm/store"
+      ]
+    },
+    {
+      "icon": "🧶",
+      "name": "Yarn cache",
+      "method": "rm",
+      "default": true,
+      "desc": "Yarn's global package cache — re-downloaded on next install.",
+      "paths": [
+        "~/Library/Caches/Yarn",
+        "~/.yarn/cache"
+      ]
+    },
+    {
+      "icon": "🐘",
+      "name": "Gradle user cache",
+      "method": "rm",
+      "default": true,
+      "desc": "Gradle downloaded dependencies & build cache in ~/.gradle — re-fetched on build.",
+      "paths": [
+        "~/.gradle/caches"
+      ]
+    },
+    {
+      "icon": "🔴",
+      "name": "Maven repository",
+      "method": "rm",
+      "default": false,
+      "desc": "Locally cached Maven artifacts (~/.m2) — re-downloaded on next build.",
+      "paths": [
+        "~/.m2/repository"
+      ]
+    },
+    {
+      "icon": "🦀",
+      "name": "Cargo registry cache",
+      "method": "rmforce",
+      "default": true,
+      "desc": "Cargo's downloaded crate cache & sources — re-fetched on next build.",
+      "paths": [
+        "~/.cargo/registry/cache",
+        "~/.cargo/registry/src",
+        "~/.cargo/registry/index"
+      ]
+    },
+    {
+      "icon": "🐍",
+      "name": "Python cache (pip / uv / poetry)",
+      "method": "rm",
+      "default": true,
+      "desc": "pip, uv & poetry download caches — re-downloaded on next install.",
+      "paths": [
+        "~/Library/Caches/pip",
+        "~/.cache/pip",
+        "~/Library/Caches/uv",
+        "~/.cache/uv",
+        "~/Library/Caches/pypoetry"
+      ]
+    },
+    {
+      "icon": "🥟",
+      "name": "Bun cache",
+      "method": "rm",
+      "default": true,
+      "desc": "Bun's install cache — re-downloaded on next install.",
+      "paths": [
+        "~/.bun/install/cache"
+      ]
+    },
+    {
+      "icon": "🍫",
+      "name": "CocoaPods cache",
+      "method": "rm",
+      "default": true,
+      "desc": "CocoaPods spec & pod download cache — re-fetched on next 'pod install'.",
+      "paths": [
+        "~/Library/Caches/CocoaPods"
+      ]
+    },
+    {
+      "icon": "🧠",
+      "name": "JetBrains caches & logs",
+      "method": "rm",
+      "default": true,
+      "desc": "IntelliJ/PyCharm/etc. index caches & logs — rebuilt on next launch.",
+      "paths": [
+        "~/Library/Caches/JetBrains",
+        "~/Library/Logs/JetBrains"
+      ]
+    },
+    {
+      "icon": "🎭",
+      "name": "Playwright / Puppeteer browsers",
+      "method": "rm",
+      "default": false,
+      "desc": "Downloaded test browsers — re-installed by 'playwright install'.",
+      "paths": [
+        "~/Library/Caches/ms-playwright",
+        "~/Library/Caches/ms-playwright-go",
+        "~/.cache/puppeteer"
+      ]
+    },
+    {
+      "icon": "🍺",
+      "name": "Homebrew download cache",
+      "method": "rm",
+      "default": true,
+      "desc": "Downloaded bottles & installers ('brew cleanup') — re-fetched on demand.",
+      "paths": [
+        "~/Library/Caches/Homebrew"
+      ]
+    },
+    {
+      "icon": "🤖",
+      "name": "Android build caches",
+      "method": "rm",
+      "default": false,
+      "desc": "Android SDK/Gradle transient caches — rebuilt by the toolchain.",
+      "paths": [
+        "~/.android/cache",
+        "~/.android/build-cache"
+      ]
+    }
+  ]
+}

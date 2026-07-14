@@ -34,6 +34,7 @@ source ~/.zshrc
 - **彩色文件列表** — 文件和目录有各自的颜色，深色和浅色背景都好看。
 - **更好的默认设置** — Tab 补全不区分大小写、更智能的历史记录（自动去重）、最多保存 100,000 条命令，以及开箱即用的常用按键（Home / End / Fn+Delete / Option+方向键按单词跳转）。
 - **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Bun、Go、Homebrew、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude、Google Chrome 和 OmniDiskSweeper。用方向键选择即可。
+- **Mac 清理工具 (`clean-my-mac`)** — 交互式工具，能回收可再生的开发者缓存和构建产物（Xcode、Go、Node/npm/pnpm/yarn、Gradle、Maven、Cargo、Python、Homebrew、Playwright 等）所占用的磁盘空间，清理 Electron/浏览器/应用缓存，可选地用 `-p` 清扫你代码仓库中的项目垃圾（`node_modules`、`dist`、被 git 忽略的文件），回收 Docker/Podman 空间，并找出你已卸载应用残留的数据。各个类别在可编辑的 JSON 文件中定义；每一项都会显示*清理什么*以及*为什么*，未经确认绝不删除，甚至可以通过 `curl … | bash` 独立运行。
 
 ---
 
@@ -92,6 +93,41 @@ source ~/.zshrc
 - 桌面应用（VSCode、Claude、OrbStack、MongoDB Compass、DBeaver、Google Chrome、Android Studio、Antigravity、OmniDiskSweeper）会自动下载并放入 `/Applications`。
 - Git 通过 Apple 官方的 `xcode-select --install` 安装。
 - 安装器启动时会自动检查最新版本。
+
+### 5. Mac 清理工具 (`clean-my-mac`)
+
+运行 `clean-my-mac` 打开交互式清理菜单。它会扫描你的 Mac，把所有能安全回收的内容按类别分组，每个类别都会显示可释放多少空间。
+
+它还能**独立运行** — 无需先安装 setup-zsh：
+
+```bash
+curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/bin/clean-my-mac | bash
+# dry-run (look only, delete nothing):
+curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/bin/clean-my-mac | bash -s -- --dry-run
+```
+
+- **导航**：用 **上 / 下 方向键**（或 `j` / `k`）移动光标（`❯`）。
+- **选择**：按 **空格键** 或 **回车** 勾选/取消某个类别（`[ ]` ↔ `[✓]`）。安全、可再生的缓存已默认勾选；风险较高的项目（Maven 仓库、Playwright、崩溃日志）、项目文件夹以及残留的应用数据默认**不勾选**。
+- **详情**：按 **`d`** 查看当前高亮类别内的具体路径和大小。
+- **批量操作**：**`a`** 全选，**`n`** 全不选，**`s`** 恢复到安全的默认选择。
+- **清理**：按 **`c`** 查看逐项清理计划（哪些会被**删除**、哪些会**移到废纸篓**，以及总计），再按 `y` 确认。
+- **退出**：按 **`q`**（或 `Esc`）。
+
+**它会清理哪些内容：**
+- **开发者缓存和构建产物** — Xcode DerivedData/DeviceSupport、Go 构建与模块缓存、npm/pnpm/yarn 缓存、Gradle、Maven、Cargo、Python (pip/uv/poetry)、Bun、CocoaPods、JetBrains、Playwright，以及 Homebrew 下载缓存。
+- **Electron、浏览器和应用缓存** — Electron 应用（VS Code、Claude、Slack 等）以及浏览器（Chrome、Brave、Edge、Vivaldi、Arc、Firefox）的磁盘/GPU/代码缓存。
+- **项目垃圾 (`-p`)** — 使用 `clean-my-mac -p` 时，它还会扫描你的代码仓库，查找可再生的文件夹（`node_modules`、`dist`、`build`、`target`、`__pycache__` 等），并可选地清理 `.gitignore` 忽略的所有内容。
+- **Docker / Podman** — 通过 `system prune -af` 回收已停止的容器、未使用的镜像和构建缓存（需手动开启）。命名卷 / 数据库绝不会被触碰。
+- **残留的应用数据** — 已卸载应用遗留的 `Application Support` / `Caches` / `Preferences` 文件夹。
+
+**可编辑的模式文件。** 每个类别都由 JSON「模式」文件描述（位于 [`clean-my-mac-rules/`](clean-my-mac-rules/) 文件夹，安装到 `~/.zsh/setup-zsh/clean-my-mac-rules`，或在独立运行时下载）。编辑它们即可增删目标——无需改动代码。用 `clean-my-mac --patterns <dir-or-url>` 指向你自己的一套文件。
+
+**小贴士：**
+- 缓存和构建产物会被永久删除（这正是目的所在）。**残留的应用数据和被 git 忽略的文件会被移到废纸篓**，需要时可以恢复。
+- 应用沙盒以及任何 Apple/系统所有的内容都不会被触碰，而且无论模式文件怎么写，重要文件夹（`~/Documents`、`~/Desktop`、`~/Downloads`、`~/Pictures`、`~/.ssh`、iCloud Drive 等）都绝不会被删除。已安装应用列表读取自 LaunchServices，因此仍在使用的 prefPanes、插件和驱动不会被误判为残留。
+- 项目扫描**默认关闭**（用 `-p` 启用），因为扫描主目录会比较慢。
+- `clean-my-mac --dry-run` 只显示可以释放哪些内容，不会删除任何东西。`clean-my-mac --yes` 会以非交互方式清理默认勾选的安全缓存（跳过项目文件夹、残留数据和废纸篓）。`clean-my-mac --help` 列出所有选项。
+- 每次运行都会记录到 `~/.zsh/setup-zsh/clean.log`。
 
 ---
 

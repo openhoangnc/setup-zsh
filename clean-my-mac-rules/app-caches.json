@@ -1,0 +1,77 @@
+{
+  "title": "Browser & application caches",
+  "_comment": "Application-level caches. The Electron/Chromium entry uses * globs to match the Cache/GPUCache/etc. folders that Electron apps (VS Code, Claude, Slack, Discord, ...) create under Application Support. These hold only re-fetchable data. method: emptytrash empties ~/.Trash (irreversible).",
+  "categories": [
+    {
+      "icon": "⚡",
+      "name": "Electron / Chromium app caches",
+      "method": "rm",
+      "default": true,
+      "desc": "Disk/GPU/code caches inside Electron apps (VS Code, Claude, Slack, ...) — rebuilt on launch.",
+      "paths": [
+        "~/Library/Application Support/*/Cache",
+        "~/Library/Application Support/*/Code Cache",
+        "~/Library/Application Support/*/GPUCache",
+        "~/Library/Application Support/*/CachedData",
+        "~/Library/Application Support/*/DawnCache",
+        "~/Library/Application Support/*/DawnGraphiteCache",
+        "~/Library/Application Support/*/DawnWebGPUCache",
+        "~/Library/Application Support/*/Service Worker/CacheStorage",
+        "~/Library/Application Support/*/Crashpad/completed",
+        "~/Library/Application Support/*/Partitions/*/Cache",
+        "~/Library/Application Support/*/logs"
+      ]
+    },
+    {
+      "icon": "🌐",
+      "name": "Browser caches",
+      "method": "rm",
+      "default": true,
+      "desc": "HTTP/disk caches for Chrome, Brave, Edge, Vivaldi, Arc, Firefox — safe to clear.",
+      "paths": [
+        "~/Library/Caches/Google",
+        "~/Library/Caches/com.google.Chrome",
+        "~/Library/Caches/Chromium",
+        "~/Library/Caches/BraveSoftware",
+        "~/Library/Caches/com.microsoft.edgemac",
+        "~/Library/Caches/Microsoft Edge",
+        "~/Library/Caches/company.thebrowser.Browser",
+        "~/Library/Caches/Vivaldi",
+        "~/Library/Caches/Firefox",
+        "~/Library/Caches/Mozilla",
+        "~/Library/Caches/com.apple.Safari"
+      ]
+    },
+    {
+      "icon": "📦",
+      "name": "Sandboxed app caches",
+      "method": "rm",
+      "default": false,
+      "desc": "Caches inside sandboxed (App Store) apps' containers — rebuilt as needed.",
+      "paths": [
+        "~/Library/Containers/*/Data/Library/Caches"
+      ]
+    },
+    {
+      "icon": "📋",
+      "name": "Crash & diagnostic logs",
+      "method": "rm",
+      "default": false,
+      "desc": "Old crash reports & simulator diagnostic logs — regenerated as needed.",
+      "paths": [
+        "~/Library/Logs/DiagnosticReports",
+        "~/Library/Logs/CoreSimulator"
+      ]
+    },
+    {
+      "icon": "🗑️",
+      "name": "Empty the Trash",
+      "method": "emptytrash",
+      "default": false,
+      "desc": "Permanently erase everything currently in the Trash — cannot be undone.",
+      "paths": [
+        "~/.Trash"
+      ]
+    }
+  ]
+}

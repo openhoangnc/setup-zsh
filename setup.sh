@@ -55,6 +55,11 @@ if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/plugins/zsh-autosuggestions" && -d "$S
 		cp -R "$SCRIPT_DIR/bin/"* "$HOME/.zsh/setup-zsh/bin/"
 		chmod +x "$HOME/.zsh/setup-zsh/bin/"*
 	fi
+	if [[ -d "$SCRIPT_DIR/clean-my-mac-rules" ]]; then
+		echo -e "${BLUE}Installing clean-my-mac rules from local repository...${NC}"
+		mkdir -p "$HOME/.zsh/setup-zsh/clean-my-mac-rules"
+		cp -R "$SCRIPT_DIR/clean-my-mac-rules/"* "$HOME/.zsh/setup-zsh/clean-my-mac-rules/"
+	fi
 	echo -e "${GREEN}✓ Plugins installed from local repository.${NC}"
 else
 	echo -e "${BLUE}Downloading plugins from openhoangnc/setup-zsh repository...${NC}"
@@ -77,7 +82,12 @@ else
 		cp -R "$TEMP_DIR/setup-zsh-main/bin/"* "$HOME/.zsh/setup-zsh/bin/"
 		chmod +x "$HOME/.zsh/setup-zsh/bin/"*
 	fi
-	
+	if [[ -d "$TEMP_DIR/setup-zsh-main/clean-my-mac-rules" ]]; then
+		echo -e "${BLUE}Installing clean-my-mac rules from openhoangnc/setup-zsh repository...${NC}"
+		mkdir -p "$HOME/.zsh/setup-zsh/clean-my-mac-rules"
+		cp -R "$TEMP_DIR/setup-zsh-main/clean-my-mac-rules/"* "$HOME/.zsh/setup-zsh/clean-my-mac-rules/"
+	fi
+
 	rm -rf "$TEMP_ZIP" "$TEMP_DIR"
 	echo -e "${GREEN}✓ Plugins installed from openhoangnc/setup-zsh repository.${NC}"
 fi

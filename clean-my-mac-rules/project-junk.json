@@ -1,0 +1,60 @@
+{
+  "title": "Project build & dependency folders",
+  "_comment": "Regenerable folders inside your CODE REPOS. The tool groups findings per project (one git repo = one project) so you can pick which repos to clean. 'scan.roots' are searched up to maxDepth; interior dirs named in 'prune' are skipped (this list also excludes tool/cache homes like ~/.npm, ~/.cargo, ~/.local so language caches, global npm, editor extensions and the like are never mistaken for your projects — those are covered by the dev-cache rules instead). kind:project entries only define the regenerable dir NAMES to match (and the method); they are deleted with rm. kind:gitignore enumerates every git-ignored entry via 'git ls-files --others --ignored --directory' per repo and moves them to the Trash (recoverable — git-ignored files can include local .env/config). Junk found outside any git repo is ignored.",
+  "scan": {
+    "roots": ["~"],
+    "maxDepth": 6,
+    "prune": ["Library", ".Trash", ".git", "Pods", ".venv", "venv", "vendor",
+              ".npm", ".cargo", ".rustup", ".local", ".cache", ".m2", ".gradle",
+              ".nuget", ".gem", ".bun", ".deno", ".nvm", ".sdkman", ".pub-cache",
+              ".cocoapods", ".vscode", ".vscode-server", ".cursor", ".claude",
+              ".docker", ".kube", ".android"],
+    "maxRepos": 400
+  },
+  "categories": [
+    {
+      "kind": "project",
+      "icon": "🟢",
+      "name": "node_modules folders",
+      "method": "rm",
+      "default": false,
+      "desc": "Node dependency trees — restore with npm/pnpm/yarn install.",
+      "dirs": ["node_modules"]
+    },
+    {
+      "kind": "project",
+      "icon": "📦",
+      "name": "JS/web build output",
+      "method": "rm",
+      "default": false,
+      "desc": "Bundler output (dist, build, out, .next, .nuxt, ...) — rebuilt by your build step.",
+      "dirs": ["dist", "build", "out", ".next", ".nuxt", ".svelte-kit", ".astro", ".turbo", ".parcel-cache", "storybook-static", "coverage"]
+    },
+    {
+      "kind": "project",
+      "icon": "🦀",
+      "name": "Rust / JVM build output",
+      "method": "rm",
+      "default": false,
+      "desc": "target/ trees (Cargo, Maven, sbt) — rebuilt on next build.",
+      "dirs": ["target"]
+    },
+    {
+      "kind": "project",
+      "icon": "🐍",
+      "name": "Python caches",
+      "method": "rm",
+      "default": false,
+      "desc": "__pycache__ and test/type-checker caches — regenerated automatically.",
+      "dirs": ["__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox"]
+    },
+    {
+      "kind": "gitignore",
+      "icon": "🙈",
+      "name": "Git-ignored files (all repos)",
+      "method": "trash",
+      "default": false,
+      "desc": "Everything 'git clean -ndX' would remove in each repo — MAY include local .env/config, so moved to Trash (recoverable)."
+    }
+  ]
+}

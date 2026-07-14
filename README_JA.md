@@ -34,6 +34,7 @@ source ~/.zshrc
 - **カラフルなファイル一覧表示** — ファイルとフォルダが色分けされ、ライトモード・ダークモードのどちらでも見やすくなります。
 - **最適なデフォルト設定** — 大文字・小文字を区別しないTab補全、より賢い履歴（重複排除）、最大10万件のコマンド履歴保存、そして日常的なキーがそのまま使えます（Home / End / Fn+Delete / Option+矢印キーでの単語ジャンプ）。
 - **開発ツールインストーラー (`install-dev-tool`)** — Bun、Go、Homebrew、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude、Google Chrome、OmniDiskSweeper をインストールできるインタラクティブメニュー。矢印キーで選択できます。
+- **Macクリーンアップ (`clean-my-mac`)** — 再生成可能な開発者キャッシュやビルド成果物（Xcode、Go、Node/npm/pnpm/yarn、Gradle、Maven、Cargo、Python、Homebrew、Playwright など）からディスク容量を回収し、Electron／ブラウザ／アプリのキャッシュをクリアし、`-p` を付ければコードリポジトリ内のプロジェクトのゴミ（`node_modules`、`dist`、git で無視されているファイル）も一掃し、Docker/Podman の空き容量を回収し、アンインストール済みアプリの残存データを洗い出すインタラクティブツール。カテゴリは編集可能な JSON ファイルで定義されており、各項目について*何を*・*なぜ*削除するのかを表示し、確認なしに削除することは決してなく、`curl … | bash` で単体でも実行できます。
 
 ---
 
@@ -92,6 +93,41 @@ source ~/.zshrc
 - デスクトップアプリ（VSCode、Claude、OrbStack、MongoDB Compass、DBeaver、Google Chrome、Android Studio、Antigravity、OmniDiskSweeper）は自動的にダウンロードされ、`/Applications` に配置されます。
 - Git は Apple 公式の `xcode-select --install` 経由でインストールされます。
 - インストーラーは起動時に自動で最新バージョンを確認します。
+
+### 5. Macクリーンアップ (`clean-my-mac`)
+
+`clean-my-mac` を実行してインタラクティブなクリーンアップメニューを開きます。Macをスキャンし、安全に回収できるものすべてをカテゴリごとにまとめ、それぞれで解放できる容量を表示します。
+
+**単体でも実行できます** — setup-zsh を先にインストールする必要はありません：
+
+```bash
+curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/bin/clean-my-mac | bash
+# dry-run (look only, delete nothing):
+curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/bin/clean-my-mac | bash -s -- --dry-run
+```
+
+- **移動**: **上 / 下** 矢印キー（または `j` / `k`）でカーソル（`❯`）を移動。
+- **選択**: **スペース** または **Enter** でカテゴリをチェック/解除（`[ ]` ↔ `[✓]`）。安全で再生成可能なキャッシュはあらかじめ選択されており、リスクの高い項目（Maven リポジトリ、Playwright、クラッシュログ）、プロジェクトフォルダ、孤立したアプリデータは**未選択**の状態で始まります。
+- **詳細**: **`d`** を押すと、ハイライト中のカテゴリ内の正確なパスとサイズを確認できます。
+- **一括操作**: **`a`** ですべて選択、**`n`** で選択解除、**`s`** で安全なデフォルト設定にリセット。
+- **クリーン**: **`c`** を押すと項目ごとの実行計画（**削除**されるものと**ゴミ箱へ移動**されるもの、および合計）を確認でき、`y` で確定します。
+- **終了**: **`q`**（または `Esc`）を押します。
+
+**削除される項目:**
+- **開発者キャッシュ＆ビルド成果物** — Xcode DerivedData/DeviceSupport、Go のビルド＆モジュールキャッシュ、npm/pnpm/yarn キャッシュ、Gradle、Maven、Cargo、Python (pip/uv/poetry)、Bun、CocoaPods、JetBrains、Playwright、そして Homebrew のダウンロードキャッシュ。
+- **Electron、ブラウザ＆アプリのキャッシュ** — Electron アプリ（VS Code、Claude、Slack など）とブラウザ（Chrome、Brave、Edge、Vivaldi、Arc、Firefox）のディスク／GPU／コードキャッシュ。
+- **プロジェクトのゴミ (`-p`)** — `clean-my-mac -p` を使うと、コードリポジトリもスキャンして再生成可能なフォルダ（`node_modules`、`dist`、`build`、`target`、`__pycache__` など）を探し、オプションで `.gitignore` が無視するものすべても対象にします。
+- **Docker / Podman** — `system prune -af` で停止済みコンテナ、未使用のイメージ、ビルドキャッシュを回収します（オプトイン）。名前付きボリューム／データベースには一切手を触れません。
+- **孤立したアプリデータ** — 所有していたアプリがすでにインストールされていない、残存した `Application Support` / `Caches` / `Preferences` フォルダ。
+
+**編集可能なパターン。** 各カテゴリは JSON の「パターン」ファイルで記述されています（[`clean-my-mac-rules/`](clean-my-mac-rules/) フォルダにあり、`~/.zsh/setup-zsh/clean-my-mac-rules` にインストールされるか、単体実行時にはダウンロードされます）。これらを編集すれば、コードを変更せずに対象を追加・削除できます。`clean-my-mac --patterns <dir-or-url>` で独自のセットを指定することもできます。
+
+**知っておくと便利:**
+- キャッシュとビルド出力は完全に削除されます（それが目的です）。**孤立したアプリデータと git で無視されているファイルはゴミ箱へ移動される**ため、復元できます。
+- アプリのサンドボックスや Apple／システムが所有するものには一切手を触れず、重要なフォルダ（`~/Documents`、`~/Desktop`、`~/Downloads`、`~/Pictures`、`~/.ssh`、iCloud Drive など）はパターンに何が書かれていても決して削除されません。インストール済みアプリの一覧は LaunchServices から読み取られるため、まだインストールされている prefPane、プラグイン、ドライバが孤立データと誤認されることはありません。
+- プロジェクトのスキャンは、ホームフォルダのスキャンに時間がかかるため**デフォルトでは無効**です（`-p` で有効化）。
+- `clean-my-mac --dry-run` は何も削除せずに解放できる容量を表示します。`clean-my-mac --yes` はあらかじめ選択された安全なキャッシュをインタラクティブなしでクリアします（プロジェクトフォルダ、孤立データ、ゴミ箱はスキップ）。`clean-my-mac --help` ですべてのオプションを一覧表示できます。
+- 実行はすべて `~/.zsh/setup-zsh/clean.log` に記録されます。
 
 ---
 
