@@ -98,7 +98,10 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 
 (
     LTS_VER=$(curl -s --max-time 10 "https://api.adoptium.net/v3/info/available_releases" | grep -o '"most_recent_lts": [0-9]*' | tr -d ' ' | cut -d: -f2 || echo "21")
-    LATEST=$(curl -s --max-time 10 "https://api.adoptium.net/v3/assets/feature_releases/${LTS_VER}/ga?architecture=${JDK_ARCH}&image_type=jdk&os=mac&vendor=eclipse" | grep -o '"release_name": "[^"]*"' | head -n 1 | cut -d'"' -f4 | sed 's/^jdk-//' || echo "Unknown")
+    # Drop the "+build" suffix (e.g. jdk-25.0.3+9 -> 25.0.3): `java -version`
+    # reports only the X.Y.Z version, so keeping the build would make an
+    # up-to-date JDK compare as perpetually outdated.
+    LATEST=$(curl -s --max-time 10 "https://api.adoptium.net/v3/assets/feature_releases/${LTS_VER}/ga?architecture=${JDK_ARCH}&image_type=jdk&os=mac&vendor=eclipse" | grep -o '"release_name": "[^"]*"' | head -n 1 | cut -d'"' -f4 | sed 's/^jdk-//' | cut -d+ -f1 || echo "Unknown")
     echo "$LATEST" > "$TEMP_VER_DIR/jdk"
 ) &
 
@@ -269,8 +272,16 @@ detect_uv() {
 }
 
 detect_jdk() {
-    if command -v java &>/dev/null; then
-        java -version 2>&1 | awk -F '"' '/version/ {print $2}' || echo ""
+    # Report the Eclipse Temurin JDK this tool installs (the pkg lands under
+    # /Library/Java/JavaVirtualMachines/temurin-*.jdk), independent of $JAVA_HOME
+    # and PATH. Android Studio's bundled JetBrains Runtime is exposed via JAVA_HOME
+    # as a fallback (see install_android_studio), and macOS's /usr/bin/java honors
+    # $JAVA_HOME — so resolving `java` off PATH would misreport the JBR as an
+    # outdated Temurin JDK. Pick the highest version if several majors coexist.
+    local jdk_home
+    jdk_home=$(ls -d /Library/Java/JavaVirtualMachines/temurin-*.jdk/Contents/Home 2>/dev/null | sort -V | tail -n 1)
+    if [[ -n "$jdk_home" && -x "$jdk_home/bin/java" ]]; then
+        "$jdk_home/bin/java" -version 2>&1 | awk -F '"' '/version/ {print $2}' || echo ""
     fi
 }
 
