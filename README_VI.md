@@ -98,6 +98,8 @@ Chạy `install-dev-tool` để mở menu tương tác.
 
 Chạy `clean-my-mac` để mở menu dọn dẹp tương tác. Công cụ sẽ quét máy Mac của bạn và nhóm mọi thứ có thể thu hồi an toàn thành các danh mục, mỗi danh mục hiển thị dung lượng sẽ được giải phóng.
 
+![clean-my-mac](clean-my-mac.png)
+
 Nó cũng **chạy độc lập** — không cần cài đặt setup-zsh trước:
 
 ```bash

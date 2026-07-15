@@ -98,6 +98,8 @@ Run `install-dev-tool` to open an interactive menu.
 
 Run `clean-my-mac` to open an interactive cleanup menu. It scans your Mac and groups everything it can safely reclaim into categories, each showing how much space it would free.
 
+![clean-my-mac](clean-my-mac.png)
+
 It also **runs standalone** — no need to install setup-zsh first:
 
 ```bash

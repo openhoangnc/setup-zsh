@@ -98,6 +98,8 @@ source ~/.zshrc
 
 运行 `clean-my-mac` 打开交互式清理菜单。它会扫描你的 Mac，把所有能安全回收的内容按类别分组，每个类别都会显示可释放多少空间。
 
+![clean-my-mac](clean-my-mac.png)
+
 它还能**独立运行** — 无需先安装 setup-zsh：
 
 ```bash
