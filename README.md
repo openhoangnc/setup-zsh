@@ -108,9 +108,9 @@ curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/bin/clean
 curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/bin/clean-my-mac | bash -s -- --dry-run
 ```
 
-- **Navigate**: Use **Up / Down** arrows (or `j` / `k`) to move the cursor (`❯`).
-- **Select**: Press **Space** or **Enter** to check/uncheck a category (`[ ]` ↔ `[✓]`). Safe, regenerable caches are pre-selected; riskier items (Maven repo, Playwright, crash logs), project folders, and orphaned app data start **unchecked**.
-- **Details**: Press **`d`** to see the exact paths and sizes inside the highlighted category.
+- **Navigate**: Use **Up / Down** arrows (or `j` / `k`) to move the cursor (`❯`). Categories are listed biggest-first, so the best wins are at the top.
+- **Select**: Press **Space** to check/uncheck a category (`[ ]` ↔ `[✓]`). Safe, regenerable caches are pre-selected; riskier items (Maven repo, Playwright, crash logs), project folders, and orphaned app data start **unchecked**.
+- **Details**: Press **Enter** (or **`d`**) to see the exact paths and sizes inside the highlighted category; any key returns.
 - **Bulk**: **`a`** selects all, **`n`** selects none, **`s`** resets to the safe defaults.
 - **Clean**: Press **`c`** to review an itemized plan (what gets **deleted** vs. **moved to Trash**, plus the total), then confirm with `y`.
 - **Quit**: Press **`q`** (or `Esc`).

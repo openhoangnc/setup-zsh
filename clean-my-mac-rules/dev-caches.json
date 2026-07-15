@@ -3,7 +3,7 @@
   "_comment": "Regenerable caches created by developer tools. method: rm = delete permanently, rmforce = chmod +w then delete (for read-only caches like Go modules & Cargo sources). Paths may use ~ and * globs. default:true = pre-selected. Rule of thumb for default: true means 'costs a rebuild or a small re-download'; false means 'costs a large re-download, or the data may not regenerate on its own'.",
   "categories": [
     {
-      "icon": "🛠️",
+      "icon": "🔨",
       "name": "Xcode derived data & device support",
       "method": "rm",
       "default": true,

@@ -108,9 +108,9 @@ curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/bin/clean
 curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/bin/clean-my-mac | bash -s -- --dry-run
 ```
 
-- **Điều hướng**: Dùng phím **Lên / Xuống** (hoặc `j` / `k`) để di chuyển con trỏ (`❯`).
-- **Chọn**: Nhấn **Space** hoặc **Enter** để đánh dấu/bỏ đánh dấu một danh mục (`[ ]` ↔ `[✓]`). Các cache an toàn, có thể tạo lại được chọn sẵn; các mục rủi ro hơn (kho Maven, Playwright, nhật ký sự cố), các thư mục dự án, và dữ liệu ứng dụng mồ côi bắt đầu ở trạng thái **chưa chọn**.
-- **Chi tiết**: Nhấn **`d`** để xem chính xác đường dẫn và dung lượng bên trong danh mục đang được chọn.
+- **Điều hướng**: Dùng phím **Lên / Xuống** (hoặc `j` / `k`) để di chuyển con trỏ (`❯`). Các danh mục được sắp xếp từ lớn đến nhỏ, nên những mục giải phóng nhiều nhất nằm ở trên cùng.
+- **Chọn**: Nhấn **Space** để đánh dấu/bỏ đánh dấu một danh mục (`[ ]` ↔ `[✓]`). Các cache an toàn, có thể tạo lại được chọn sẵn; các mục rủi ro hơn (kho Maven, Playwright, nhật ký sự cố), các thư mục dự án, và dữ liệu ứng dụng mồ côi bắt đầu ở trạng thái **chưa chọn**.
+- **Chi tiết**: Nhấn **Enter** (hoặc **`d`**) để xem chính xác đường dẫn và dung lượng bên trong danh mục đang được chọn; nhấn phím bất kỳ để quay lại.
 - **Hàng loạt**: **`a`** chọn tất cả, **`n`** bỏ chọn tất cả, **`s`** đặt lại về mặc định an toàn.
 - **Dọn dẹp**: Nhấn **`c`** để xem lại kế hoạch chi tiết (những gì sẽ bị **xóa** so với **chuyển vào Thùng rác**, kèm tổng dung lượng), rồi xác nhận bằng `y`.
 - **Thoát**: Nhấn **`q`** (hoặc `Esc`).

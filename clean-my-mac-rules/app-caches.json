@@ -188,7 +188,7 @@
       ]
     },
     {
-      "icon": "🗑️",
+      "icon": "🚮",
       "name": "Empty the Trash",
       "method": "emptytrash",
       "default": false,

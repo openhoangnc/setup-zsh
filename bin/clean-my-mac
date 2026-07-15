@@ -981,6 +981,34 @@ prune_zero() {
     N=$w
 }
 
+# sort_by_size — order the menu biggest-first, so the rows worth the most disk
+# are the ones you land on. Sorts an index list through `sort` rather than in
+# the shell: bash 3.2 (what macOS ships) has no associative arrays, and the
+# ties matter — `sort -s` keeps equal-sized rows in their rules-file order, so
+# the grouping the JSON authors chose survives.
+# Must run after compute_sizes; re-run after anything that changes CAT_KB.
+sort_by_size() {
+    local order i j=0
+    order=$(for i in $(cat_indices); do printf '%s\t%s\n' "${CAT_KB[$i]}" "$i"; done \
+            | sort -rn -k1,1 -s | cut -f2)
+    local ICON=() NAME=() DESC=() METHOD=() DEFAULT=() PATHS=() KB=() SEL=() PMETHOD=() SUMMARY=()
+    for i in $order; do
+        ICON[$j]="${CAT_ICON[$i]}";       NAME[$j]="${CAT_NAME[$i]}"
+        DESC[$j]="${CAT_DESC[$i]}";       METHOD[$j]="${CAT_METHOD[$i]}"
+        DEFAULT[$j]="${CAT_DEFAULT[$i]}"; PATHS[$j]="${CAT_PATHS[$i]}"
+        KB[$j]="${CAT_KB[$i]}";           SEL[$j]="${CAT_SEL[$i]}"
+        PMETHOD[$j]="${CAT_PMETHOD[$i]}"; SUMMARY[$j]="${CAT_SUMMARY[$i]}"
+        j=$((j + 1))
+    done
+    for i in $(cat_indices); do
+        CAT_ICON[$i]="${ICON[$i]}";       CAT_NAME[$i]="${NAME[$i]}"
+        CAT_DESC[$i]="${DESC[$i]}";       CAT_METHOD[$i]="${METHOD[$i]}"
+        CAT_DEFAULT[$i]="${DEFAULT[$i]}"; CAT_PATHS[$i]="${PATHS[$i]}"
+        CAT_KB[$i]="${KB[$i]}";           CAT_SEL[$i]="${SEL[$i]}"
+        CAT_PMETHOD[$i]="${PMETHOD[$i]}"; CAT_SUMMARY[$i]="${SUMMARY[$i]}"
+    done
+}
+
 spinner_scan() {
     local pid=$1
     local msg="${2:-Scanning your Mac...}"
@@ -1060,9 +1088,9 @@ render_menu() {
     buf+="${BLUE}🧹 ${BOLD}clean-my-mac${NC}${BLUE} — reclaim your disk${NC}${tag}\033[K\n"
     buf+="Selected ${BOLD}${sel_c}${NC}/${N}   Reclaimable ${BOLD}${GREEN}$(human_kb "$sel_kb")${NC}\033[K\n"
     if [ "$DRY_RUN" -eq 1 ]; then
-        buf+="[${DIM}↑↓${NC}] move · [${BOLD}Space${NC}] toggle · [${BOLD}a${NC}]/[${BOLD}s${NC}]/[${BOLD}n${NC}] all/safe/none · [${BOLD}d${NC}] paths · [${BOLD}q${NC}] quit\033[K\n"
+        buf+="[${DIM}↑↓${NC}] move · [${BOLD}Space${NC}] toggle · [${BOLD}a${NC}]/[${BOLD}s${NC}]/[${BOLD}n${NC}] all/safe/none · [${BOLD}Enter${NC}] paths · [${BOLD}q${NC}] quit\033[K\n"
     else
-        buf+="[${DIM}↑↓${NC}] move · [${BOLD}Space${NC}] toggle · [${BOLD}a${NC}]/[${BOLD}s${NC}]/[${BOLD}n${NC}] all/safe/none · [${BOLD}d${NC}] details · [${BOLD}c${NC}] clean · [${BOLD}q${NC}] quit\033[K\n"
+        buf+="[${DIM}↑↓${NC}] move · [${BOLD}Space${NC}] toggle · [${BOLD}a${NC}]/[${BOLD}s${NC}]/[${BOLD}n${NC}] all/safe/none · [${BOLD}Enter${NC}] details · [${BOLD}c${NC}] clean · [${BOLD}q${NC}] quit\033[K\n"
     fi
 
     local i last=$((SCROLL + viewport - 1)); [ "$last" -ge "$N" ] && last=$((N - 1))
@@ -1341,6 +1369,7 @@ offer_project_scan() {
             printf '\r\033[K'
             compute_sizes
             prune_zero
+            sort_by_size
             ;;
     esac
 }
@@ -1378,6 +1407,7 @@ fi
 if [ "$N" -gt 0 ]; then
     compute_sizes
     prune_zero
+    sort_by_size
 fi
 
 # Fast by default: project scanning is off unless -p was given, so offer it here
@@ -1426,7 +1456,9 @@ while true; do
         next=""; read -r -s -n 2 -t 1 next <&3 2>/dev/null
         case "$next" in '[A'|'OA') action="UP" ;; '[B'|'OB') action="DOWN" ;; '') action="QUIT" ;; esac
     elif [ "$key" = " " ]; then action="TOGGLE"
-    elif [ -z "$key" ]; then action="TOGGLE"
+    # Enter reaches `read -n 1` as the empty line delimiter, never as a literal
+    # CR/LF — so an empty $key IS Enter.
+    elif [ -z "$key" ]; then action="DETAILS"
     else
         case "$key" in
             k|K) action="UP" ;; j|J) action="DOWN" ;;
@@ -1452,7 +1484,7 @@ while true; do
                 printf '%s' " ${CYAN}Rescanning...${NC} "
                 build_categories; printf '\r\033[K'
                 [ "$N" -eq 0 ] && { printf '\033[?25h'; printf '\033[H\033[2J'; echo "${GREEN}All clean!${NC}"; exit 0; }
-                compute_sizes; prune_zero
+                compute_sizes; prune_zero; sort_by_size
                 [ "$N" -eq 0 ] && { printf '\033[?25h'; printf '\033[H\033[2J'; echo "${GREEN}All clean!${NC}"; exit 0; }
                 CURSOR=0; SCROLL=0
             else
