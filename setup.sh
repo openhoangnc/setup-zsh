@@ -55,11 +55,6 @@ if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/plugins/zsh-autosuggestions" && -d "$S
 		cp -R "$SCRIPT_DIR/bin/"* "$HOME/.zsh/setup-zsh/bin/"
 		chmod +x "$HOME/.zsh/setup-zsh/bin/"*
 	fi
-	if [[ -d "$SCRIPT_DIR/clean-my-mac-rules" ]]; then
-		echo -e "${BLUE}Installing clean-my-mac rules from local repository...${NC}"
-		mkdir -p "$HOME/.zsh/setup-zsh/clean-my-mac-rules"
-		cp -R "$SCRIPT_DIR/clean-my-mac-rules/"* "$HOME/.zsh/setup-zsh/clean-my-mac-rules/"
-	fi
 	echo -e "${GREEN}✓ Plugins installed from local repository.${NC}"
 else
 	echo -e "${BLUE}Downloading plugins from openhoangnc/setup-zsh repository...${NC}"
@@ -82,17 +77,34 @@ else
 		cp -R "$TEMP_DIR/setup-zsh-main/bin/"* "$HOME/.zsh/setup-zsh/bin/"
 		chmod +x "$HOME/.zsh/setup-zsh/bin/"*
 	fi
-	if [[ -d "$TEMP_DIR/setup-zsh-main/clean-my-mac-rules" ]]; then
-		echo -e "${BLUE}Installing clean-my-mac rules from openhoangnc/setup-zsh repository...${NC}"
-		mkdir -p "$HOME/.zsh/setup-zsh/clean-my-mac-rules"
-		cp -R "$TEMP_DIR/setup-zsh-main/clean-my-mac-rules/"* "$HOME/.zsh/setup-zsh/clean-my-mac-rules/"
-	fi
-
 	rm -rf "$TEMP_ZIP" "$TEMP_DIR"
 	echo -e "${GREEN}✓ Plugins installed from openhoangnc/setup-zsh repository.${NC}"
 fi
 
-# 5. Auto-detect installed dev tools and regenerate env.zsh
+# 5. Install CleanDevMac (cdm)
+#    The Mac cleanup tool lives in its own repository now — cleandevmac/cdm —
+#    so pull the latest released build rather than vendoring a copy here.
+#    A failed download must not abort the whole setup, so this step only warns.
+BIN_DIR="$HOME/.zsh/setup-zsh/bin"
+echo -e "${BLUE}Installing CleanDevMac (cdm) from cleandevmac/cdm...${NC}"
+mkdir -p "$BIN_DIR"
+TEMP_CDM=$(mktemp /tmp/cdm.XXXXXX)
+if curl -fsSL https://github.com/cleandevmac/cdm/releases/latest/download/cdm -o "$TEMP_CDM" && [[ -s "$TEMP_CDM" ]]; then
+	mv "$TEMP_CDM" "$BIN_DIR/cdm"
+	# 755, not `chmod +x`: mktemp creates 0600, so +x would leave an odd 0711.
+	chmod 755 "$BIN_DIR/cdm"
+	# Keep the old command name working for anyone who installed setup-zsh back
+	# when the tool was vendored here. Replaces the retired script in place.
+	ln -sf cdm "$BIN_DIR/clean-my-mac"
+	# Rules ship with cdm now; the vendored copies are dead weight.
+	rm -rf "$HOME/.zsh/setup-zsh/clean-my-mac-rules"
+	echo -e "${GREEN}✓ cdm installed (run 'cdm', or 'clean-my-mac').${NC}"
+else
+	rm -f "$TEMP_CDM"
+	echo -e "${RED}Warning: could not download cdm. Skipping — re-run this script to retry.${NC}"
+fi
+
+# 6. Auto-detect installed dev tools and regenerate env.zsh
 ENV_FILE="$HOME/.zsh/setup-zsh/env.zsh"
 
 _update_env_block() {
@@ -189,7 +201,7 @@ if ([[ -x "/opt/homebrew/bin/brew" ]] || [[ -x "/usr/local/bin/brew" ]] || comma
 	_update_env_block "Homebrew" "if [[ -x \"/opt/homebrew/bin/brew\" ]]; then\n  eval \"\$(/opt/homebrew/bin/brew shellenv)\"\nelif [[ -x \"/usr/local/bin/brew\" ]]; then\n  eval \"\$(/usr/local/bin/brew shellenv)\"\nfi"
 fi
 
-# 6. Save original ~/.zshrc for comparison, then update
+# 7. Save original ~/.zshrc for comparison, then update
 ZSHRC="$HOME/.zshrc"
 ORIGINAL_RC=""
 if [[ -f "$ZSHRC" ]]; then
@@ -199,13 +211,13 @@ else
 	touch "$ZSHRC"
 fi
 
-# 7. Clean existing setup-zsh configuration block to allow safe re-runs
+# 8. Clean existing setup-zsh configuration block to allow safe re-runs
 echo -e "${BLUE}Cleaning any existing setup-zsh configuration block...${NC}"
 TEMP_RC=$(mktemp /tmp/zshrc.XXXXXX)
 awk '/# >>> setup-zsh >>>/{p=1;next}/# <<< setup-zsh <<</{p=0;next}!p' "$ZSHRC" > "$TEMP_RC"
 mv "$TEMP_RC" "$ZSHRC"
 
-# 8. Append the configuration block to ~/.zshrc
+# 9. Append the configuration block to ~/.zshrc
 echo -e "${BLUE}Appending Zsh configuration block to ~/.zshrc...${NC}"
 cat << 'EOF' >> "$ZSHRC"
 # >>> setup-zsh >>>
@@ -481,7 +493,7 @@ typeset -U path PATH
 # <<< setup-zsh <<<
 EOF
 
-# 9. Backup only if content actually changed
+# 10. Backup only if content actually changed
 if [[ -n "$ORIGINAL_RC" ]]; then
 	if diff -q "$ZSHRC" "$ORIGINAL_RC" > /dev/null 2>&1; then
 		echo -e "${GREEN}✓ ~/.zshrc is already up to date, no backup needed.${NC}"
@@ -495,7 +507,7 @@ fi
 
 echo -e "${GREEN}✓ ~/.zshrc updated successfully!${NC}"
 
-# 10. Create/refresh ~/.zshenv so the environment is available to ALL zsh
+# 11. Create/refresh ~/.zshenv so the environment is available to ALL zsh
 #     invocations — login, interactive, scripts, and non-interactive tools
 #     (editors, IDEs, cron, `zsh -c ...`). ~/.zshrc is sourced only by
 #     interactive shells, so PATH additions placed there are invisible to

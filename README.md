@@ -34,7 +34,7 @@ source ~/.zshrc
 - **Colorful File Listings** — Files and folders get distinct colors that look good on both light and dark backgrounds.
 - **Better Defaults** — Case-insensitive Tab completion, smarter history (no duplicates), up to 100,000 commands saved, and everyday keys that just work (Home / End / Fn+Delete / Option+Arrow word jumps).
 - **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, Google Chrome, and OmniDiskSweeper. Navigate with arrow keys, pick what you need.
-- **Mac Cleanup (`clean-my-mac`)** — An interactive tool that reclaims disk space from regenerable developer caches and build artifacts (Xcode, Go, Node/npm/pnpm/yarn, Gradle, Maven, Cargo, Python, Homebrew, Playwright, and more), clears Electron/browser/app caches, offers to sweep project junk grouped per repo so you pick which projects to clean (`node_modules`, `dist`, build output, git-ignored files), reclaims Docker/Podman space, and surfaces leftover data from apps you've uninstalled. Categories are defined in editable JSON files; it shows *what* and *why* for every item, never deletes without confirmation, and even runs standalone via `curl … | bash`.
+- **Mac Cleanup (`cdm`)** — Installs [**CleanDevMac**](https://github.com/cleandevmac/cdm), my standalone cleanup tool (it started out in this repo). It reclaims disk space from regenerable developer caches and build artifacts (Xcode, Go, Node/npm/pnpm/yarn, Gradle, Maven, Cargo, Python, Homebrew, Playwright, and more), clears Electron/browser/app caches, sweeps project junk grouped per repo, reclaims Docker/Podman space, and surfaces leftover data from apps you've uninstalled — never deleting anything without an itemized confirmation.
 
 ---
 
@@ -94,44 +94,23 @@ Run `install-dev-tool` to open an interactive menu.
 - Git is installed through Apple's official `xcode-select --install`.
 - The installer checks for the latest versions automatically on startup.
 
-### 5. Mac Cleanup (`clean-my-mac`)
+### 5. Mac Cleanup (`cdm`)
 
-Run `clean-my-mac` to open an interactive cleanup menu. It scans your Mac and groups everything it can safely reclaim into categories, each showing how much space it would free.
+Cleanup is handled by [**CleanDevMac**](https://github.com/cleandevmac/cdm) — my standalone tool, which grew out of this repo and now lives in its own. Setup downloads the latest release to `~/.zsh/setup-zsh/bin/cdm`; run it with `cdm` (the old `clean-my-mac` name still works).
 
-![clean-my-mac](clean-my-mac.png)
+[![CleanDevMac](https://raw.githubusercontent.com/cleandevmac/cdm/main/screenshot.png)](https://github.com/cleandevmac/cdm)
+
+It opens an interactive menu: it scans your Mac, groups everything it can safely reclaim into categories sorted biggest-first, and deletes only the ones you tick — developer caches and build artifacts, Electron/browser/app caches, project junk grouped per repo, Docker/Podman, and leftover data from apps you've uninstalled. You always see an itemized plan before anything is removed.
 
 It also **runs standalone** — no need to install setup-zsh first:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/bin/clean-my-mac | bash
+curl -sSL https://github.com/cleandevmac/cdm/releases/latest/download/cdm | bash
 # dry-run (look only, delete nothing):
-curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/bin/clean-my-mac | bash -s -- --dry-run
+curl -sSL https://github.com/cleandevmac/cdm/releases/latest/download/cdm | bash -s -- -n
 ```
 
-- **Navigate**: Use **Up / Down** arrows (or `j` / `k`) to move the cursor (`❯`). Categories are listed biggest-first, so the best wins are at the top.
-- **Select**: Press **Space** to check/uncheck a category (`[ ]` ↔ `[✓]`). Safe, regenerable caches are pre-selected; riskier items (Maven repo, Playwright, crash logs), project folders, and orphaned app data start **unchecked**.
-- **Details**: Press **Enter** (or **`d`**) to see the exact paths and sizes inside the highlighted category; any key returns.
-- **Bulk**: **`a`** selects all, **`n`** selects none, **`s`** resets to the safe defaults.
-- **Clean**: Press **`c`** to review an itemized plan (what gets **deleted** vs. **moved to Trash**, plus the total), then confirm with `y`.
-- **Quit**: Press **`q`** (or `Esc`).
-
-**What it removes:**
-- **Developer caches & build artifacts** — Xcode DerivedData/DeviceSupport, Go build & module cache, npm/npx/pnpm/yarn caches, JS build tools (Turbo, Vite, webpack, Parcel, ESLint), Gradle, Maven, sbt/Ivy, Cargo, Python (pip/uv/poetry/ruff/mypy), Ruby/Bundler, Bun, Deno, CocoaPods, SwiftPM, Composer, Bazel/Zig, cloud CLI caches (kubectl/AWS/gcloud/Azure), Docker buildx, JetBrains, Playwright, and the Homebrew download cache.
-- **Electron, browser & app caches** — disk/GPU/code caches for Electron apps (VS Code, Claude, Slack, …), per-profile caches for Chromium browsers (Chrome, Brave, Edge, Vivaldi, Arc) and Firefox, plus crash-reporter/telemetry SDK caches (Sentry, Crashlytics, Sparkle, …).
-- **Project junk (grouped per project)** — after the cache scan, an interactive run offers to scan your code repos and lists what it finds **grouped by project** (one git repo = one row) so you can pick exactly which repos to clean. Each row shows its reclaimable size and what's inside (`node_modules`, `dist`, `build`, `target`, `__pycache__`, and git-ignored files); regenerable build/dependency dirs are deleted, while any other git-ignored item (a local `.env`/config) is moved to the Trash so it can be recovered. Junk that isn't inside a git repo — language/tool caches, global npm, editor extensions — is left to the cache categories, never mistaken for one of your projects. Pass `clean-my-mac -p` to force the repo scan in non-interactive/scripted runs.
-- **Docker / Podman** — reclaims stopped containers, unused images, and build cache via `system prune -af` (opt-in). Named volumes / databases are never touched.
-- **Orphaned app data** — leftover `Application Support` / `Caches` / `Preferences` folders whose owning app is no longer installed.
-
-**Editable patterns.** Every category is described by JSON "pattern" files (in the [`clean-my-mac-rules/`](clean-my-mac-rules/) folder, installed to `~/.zsh/setup-zsh/clean-my-mac-rules`, or downloaded when running standalone). Edit them to add or remove targets — no code changes. Point at your own set with `clean-my-mac --patterns <dir-or-url>`.
-
-**Credits.** Some cache locations were cross-checked against other open-source macOS cleaners — [PureMac](https://github.com/momenbasel/PureMac) (MIT), [mac-cleaner-cli](https://github.com/guhcostan/mac-cleaner-cli) (MIT), [mac-cleanup-go](https://github.com/2ykwang/mac-cleanup-go) (MIT), and [mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py) (Apache-2.0). Rules here are written independently for this tool's own schema; each path was verified before being added.
-
-**Good to know:**
-- Caches and build output are deleted permanently (that's the point). **Orphaned app data and git-ignored files are moved to the Trash**, so you can restore them.
-- App sandboxes and anything Apple/system-owned are never touched, and high-value folders (`~/Documents`, `~/Desktop`, `~/Downloads`, `~/Pictures`, `~/.ssh`, iCloud Drive, …) are never deleted regardless of what a pattern says. The installed-app list is read from LaunchServices, so still-installed prefPanes, plugins, and drivers aren't mistaken for orphaned.
-- Project scanning is **off by default** (`-p` to enable) because scanning your home folder is slower.
-- `clean-my-mac --dry-run` shows what could be freed without deleting anything. `clean-my-mac --yes` non-interactively clears the pre-selected safe caches (skips project folders, orphaned data, and the Trash). `clean-my-mac --help` lists all options.
-- Every run is logged to `~/.zsh/setup-zsh/clean.log`.
+The TUI keys, the full list of what it cleans, the safety guarantees, and the editable rule JSON are all documented in the [CleanDevMac README](https://github.com/cleandevmac/cdm#readme).
 
 ---
 
