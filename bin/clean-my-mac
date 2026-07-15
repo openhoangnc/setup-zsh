@@ -189,9 +189,18 @@ du_kb() {
     [ -e "$1" ] || { echo 0; return; }
     du -sk "$1" 2>/dev/null | awk '{print $1}' || echo 0
 }
+# is_nonempty <path> — true for a regular file, or a directory holding anything.
+# Uses globbing rather than $(ls -A) because this runs once per matched path and
+# a rules set expands to hundreds of them: a fork each is what made scanning
+# take minutes.
 is_nonempty() {
     [ -f "$1" ] && return 0
-    [ -d "$1" ] && [ -n "$(ls -A "$1" 2>/dev/null)" ] && return 0
+    if [ -d "$1" ]; then
+        local __e
+        for __e in "$1"/* "$1"/.[!.]*; do
+            if [ -e "$__e" ] || [ -L "$__e" ]; then return 0; fi
+        done
+    fi
     return 1
 }
 cat_indices() {
@@ -313,17 +322,31 @@ register_paths() {
     while IFS= read -r pat; do
         [ -n "$pat" ] || continue
         pat=$(expand_tilde "$pat")
-        while IFS= read -r m; do
-            [ -n "$m" ] || continue
-            is_nonempty "$m" || continue
+        # Expand the pattern with bash's own pathname expansion instead of
+        # `< <(compgen -G "$pat")`. The process substitution cost a fork per
+        # pattern, and a full rules set is ~250 of them: past roughly 250
+        # bash 3.2 stops making progress entirely and the scan hangs for
+        # minutes instead of finishing in seconds.
+        #
+        # IFS is emptied so the unquoted $pat still globs but does NOT
+        # word-split — patterns like "~/Library/Application Support/*/Code
+        # Cache" contain spaces, and splitting them matches nothing at all.
+        # An unmatched glob expands to itself, which the -e test discards.
+        local __ifs="$IFS"; IFS=
+        for m in $pat; do
+            IFS="$__ifs"
+            [ -e "$m" ] || { IFS=; continue; }
+            is_nonempty "$m" || { IFS=; continue; }
             case "
 $found
 " in *"
 $m
-"*) continue ;; esac
+"*) IFS=; continue ;; esac
             found="${found:+$found
 }$m"
-        done < <(compgen -G "$pat" 2>/dev/null)
+            IFS=
+        done
+        IFS="$__ifs"
     done <<EOF
 $pathlist
 EOF
