@@ -108,12 +108,19 @@ if [ -z "${HOME:-}" ] || [ "$HOME" = "/" ] || [ ! -d "$HOME" ]; then
     exit 1
 fi
 
-# When piped from curl (stdin is the script, not the keyboard), reconnect stdin
-# to the terminal so the interactive menu can read keypresses. Probe first in a
-# subshell so a missing/unusable /dev/tty produces no error and no permanent
-# stderr redirection.
-if [ "$NON_INTERACTIVE" -eq 0 ] && [ ! -t 0 ] && ( exec < /dev/tty ) 2>/dev/null; then
-    exec < /dev/tty
+# Keypresses are read from fd 3, never fd 0. Under `curl … | bash` fd 0 is the
+# script itself and bash is still reading the remaining lines from it, so
+# redirecting fd 0 would both steal the rest of the script and break the pipe
+# (curl: "Failure writing output to destination"). Probe in a subshell so a
+# missing/unusable /dev/tty produces no error and no permanent redirection.
+if ( exec 3< /dev/tty ) 2>/dev/null; then
+    exec 3< /dev/tty
+elif [ -t 0 ]; then
+    exec 3<&0
+else
+    # No terminal at all: reads hit EOF immediately, which every caller treats
+    # as "no answer" rather than consuming the piped script as keystrokes.
+    exec 3< /dev/null
 fi
 
 LOG_DIR="$HOME/.zsh/setup-zsh"
@@ -1070,7 +1077,7 @@ render_menu() {
 # restarts, so this just blocks until a key — same intended effect.) Stops on a
 # real key or on stdin EOF.
 wait_any_key() {
-    while ! IFS= read -r -s -n 1 _ 2>/dev/null; do
+    while ! IFS= read -r -s -n 1 _ <&3 2>/dev/null; do
         [ "${NEED_REDRAW:-0}" = 1 ] || break
         NEED_REDRAW=0
     done
@@ -1221,7 +1228,7 @@ run_cleanup() {
         # Retry on a SIGWINCH-interrupted read so a terminal resize while the
         # prompt is up doesn't count as a (cancelling) empty answer.
         local reply=""
-        while ! IFS= read -r reply; do
+        while ! IFS= read -r reply <&3; do
             [ "${NEED_REDRAW:-0}" = 1 ] || break
             NEED_REDRAW=0
         done
@@ -1288,7 +1295,7 @@ offer_project_scan() {
     # Act on the first keypress — no Enter needed. y/Y or Enter means Yes;
     # any other key (n, Esc, ...) means No. A failed read also means No.
     local reply=""
-    if ! IFS= read -r -s -n 1 reply 2>/dev/null; then
+    if ! IFS= read -r -s -n 1 reply <&3 2>/dev/null; then
         printf '\n'
         return 0
     fi
@@ -1370,7 +1377,7 @@ dirty=1
 while true; do
     [ "$dirty" = 1 ] && { render_menu; dirty=0; }
     SECONDS=0
-    if ! IFS= read -r -s -n 1 -t 1 key 2>/dev/null; then
+    if ! IFS= read -r -s -n 1 -t 1 key <&3 2>/dev/null; then
         # No key: a resize, an idle 1s timeout, or EOF. Redraw on a resize.
         if [ "$NEED_REDRAW" = 1 ]; then NEED_REDRAW=0; dirty=1; continue; fi
         # bash 3.2 returns 1 for BOTH a timeout and EOF; tell them apart by the
@@ -1383,7 +1390,7 @@ while true; do
     dirty=1
     action=""
     if [ "$key" = $'\e' ]; then
-        next=""; read -r -s -n 2 -t 1 next 2>/dev/null
+        next=""; read -r -s -n 2 -t 1 next <&3 2>/dev/null
         case "$next" in '[A'|'OA') action="UP" ;; '[B'|'OB') action="DOWN" ;; '') action="QUIT" ;; esac
     elif [ "$key" = " " ]; then action="TOGGLE"
     elif [ -z "$key" ]; then action="TOGGLE"
