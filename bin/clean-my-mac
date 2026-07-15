@@ -1221,6 +1221,16 @@ run_cleanup() {
     print_plan
     if [ "$(selected_count)" -eq 0 ]; then echo "${YELLOW}Nothing selected.${NC}"; return 1; fi
 
+    # --dry-run stops here, before any confirmation or deletion. Every caller
+    # funnels through run_cleanup (the interactive menu and the non-interactive
+    # -y path both call it), so the guard belongs here rather than at the call
+    # sites: guarding only the menu let `--dry-run --yes` delete for real.
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo
+        echo "${YELLOW}Dry run — nothing was deleted.${NC}"
+        return 1
+    fi
+
     if [ "$NON_INTERACTIVE" -eq 0 ]; then
         echo
         [ "$PLAN_HAS_PERMANENT" -eq 1 ] && echo "${YELLOW}Items marked DELETE / EMPTY TRASH are removed permanently.${NC}"
@@ -1411,24 +1421,22 @@ while true; do
         SAFE) select_safe ;;
         DETAILS) printf '\033[?25h'; show_details; printf '\033[?25l' ;;
         CLEAN)
-            if [ "$DRY_RUN" -eq 1 ]; then
-                :
+            # run_cleanup refuses to delete under --dry-run but still prints the
+            # plan, so `c` shows what would be freed instead of doing nothing.
+            if run_cleanup; then
+                echo; printf '%s' "${DIM}Press any key to return to the menu...${NC}"
+                wait_any_key
+                printf '%s' " ${CYAN}Rescanning...${NC} "
+                build_categories; printf '\r\033[K'
+                [ "$N" -eq 0 ] && { printf '\033[?25h'; printf '\033[H\033[2J'; echo "${GREEN}All clean!${NC}"; exit 0; }
+                compute_sizes; prune_zero
+                [ "$N" -eq 0 ] && { printf '\033[?25h'; printf '\033[H\033[2J'; echo "${GREEN}All clean!${NC}"; exit 0; }
+                CURSOR=0; SCROLL=0
             else
-                if run_cleanup; then
-                    echo; printf '%s' "${DIM}Press any key to return to the menu...${NC}"
-                    wait_any_key
-                    printf '%s' " ${CYAN}Rescanning...${NC} "
-                    build_categories; printf '\r\033[K'
-                    [ "$N" -eq 0 ] && { printf '\033[?25h'; printf '\033[H\033[2J'; echo "${GREEN}All clean!${NC}"; exit 0; }
-                    compute_sizes; prune_zero
-                    [ "$N" -eq 0 ] && { printf '\033[?25h'; printf '\033[H\033[2J'; echo "${GREEN}All clean!${NC}"; exit 0; }
-                    CURSOR=0; SCROLL=0
-                else
-                    echo; printf '%s' "${DIM}Press any key to return to the menu...${NC}"
-                    wait_any_key
-                fi
-                printf '\033[?25l'
+                echo; printf '%s' "${DIM}Press any key to return to the menu...${NC}"
+                wait_any_key
             fi
+            printf '\033[?25l'
             ;;
         QUIT) printf '\033[?25h'; printf '\033[H\033[2J'; echo "${BLUE}Goodbye!${NC}"; exit 0 ;;
     esac
