@@ -1825,7 +1825,10 @@ while true; do
         fi
 
         echo -e "\n${BLUE}Starting installation of $count selected tool(s)...${NC}\n"
-        
+
+        # Keep only the last install: start each batch from an empty log
+        : > "$LOG_FILE"
+
         {
             echo "=================================================="
             echo "Batch installation started: $(date)"
