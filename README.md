@@ -116,13 +116,15 @@ curl -sSL https://raw.githubusercontent.com/openhoangnc/setup-zsh/main/bin/clean
 - **Quit**: Press **`q`** (or `Esc`).
 
 **What it removes:**
-- **Developer caches & build artifacts** — Xcode DerivedData/DeviceSupport, Go build & module cache, npm/pnpm/yarn caches, Gradle, Maven, Cargo, Python (pip/uv/poetry), Bun, CocoaPods, JetBrains, Playwright, and the Homebrew download cache.
-- **Electron, browser & app caches** — disk/GPU/code caches for Electron apps (VS Code, Claude, Slack, …) and browsers (Chrome, Brave, Edge, Vivaldi, Arc, Firefox).
+- **Developer caches & build artifacts** — Xcode DerivedData/DeviceSupport, Go build & module cache, npm/npx/pnpm/yarn caches, JS build tools (Turbo, Vite, webpack, Parcel, ESLint), Gradle, Maven, sbt/Ivy, Cargo, Python (pip/uv/poetry/ruff/mypy), Ruby/Bundler, Bun, Deno, CocoaPods, SwiftPM, Composer, Bazel/Zig, cloud CLI caches (kubectl/AWS/gcloud/Azure), Docker buildx, JetBrains, Playwright, and the Homebrew download cache.
+- **Electron, browser & app caches** — disk/GPU/code caches for Electron apps (VS Code, Claude, Slack, …), per-profile caches for Chromium browsers (Chrome, Brave, Edge, Vivaldi, Arc) and Firefox, plus crash-reporter/telemetry SDK caches (Sentry, Crashlytics, Sparkle, …).
 - **Project junk (grouped per project)** — after the cache scan, an interactive run offers to scan your code repos and lists what it finds **grouped by project** (one git repo = one row) so you can pick exactly which repos to clean. Each row shows its reclaimable size and what's inside (`node_modules`, `dist`, `build`, `target`, `__pycache__`, and git-ignored files); regenerable build/dependency dirs are deleted, while any other git-ignored item (a local `.env`/config) is moved to the Trash so it can be recovered. Junk that isn't inside a git repo — language/tool caches, global npm, editor extensions — is left to the cache categories, never mistaken for one of your projects. Pass `clean-my-mac -p` to force the repo scan in non-interactive/scripted runs.
 - **Docker / Podman** — reclaims stopped containers, unused images, and build cache via `system prune -af` (opt-in). Named volumes / databases are never touched.
 - **Orphaned app data** — leftover `Application Support` / `Caches` / `Preferences` folders whose owning app is no longer installed.
 
 **Editable patterns.** Every category is described by JSON "pattern" files (in the [`clean-my-mac-rules/`](clean-my-mac-rules/) folder, installed to `~/.zsh/setup-zsh/clean-my-mac-rules`, or downloaded when running standalone). Edit them to add or remove targets — no code changes. Point at your own set with `clean-my-mac --patterns <dir-or-url>`.
+
+**Credits.** Some cache locations were cross-checked against other open-source macOS cleaners — [PureMac](https://github.com/momenbasel/PureMac) (MIT), [mac-cleaner-cli](https://github.com/guhcostan/mac-cleaner-cli) (MIT), [mac-cleanup-go](https://github.com/2ykwang/mac-cleanup-go) (MIT), and [mac-cleanup-py](https://github.com/mac-cleanup/mac-cleanup-py) (Apache-2.0). Rules here are written independently for this tool's own schema; each path was verified before being added.
 
 **Good to know:**
 - Caches and build output are deleted permanently (that's the point). **Orphaned app data and git-ignored files are moved to the Trash**, so you can restore them.

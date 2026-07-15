@@ -1,14 +1,15 @@
 {
   "title": "Project build & dependency folders",
-  "_comment": "Regenerable folders inside your CODE REPOS. The tool groups findings per project (one git repo = one project) so you can pick which repos to clean. 'scan.roots' are searched up to maxDepth; interior dirs named in 'prune' are skipped (this list also excludes tool/cache homes like ~/.npm, ~/.cargo, ~/.local so language caches, global npm, editor extensions and the like are never mistaken for your projects — those are covered by the dev-cache rules instead). kind:project entries only define the regenerable dir NAMES to match (and the method); they are deleted with rm. kind:gitignore enumerates every git-ignored entry via 'git ls-files --others --ignored --directory' per repo and moves them to the Trash (recoverable — git-ignored files can include local .env/config). Junk found outside any git repo is ignored.",
+  "_comment": "Regenerable folders inside your CODE REPOS. The tool groups findings per project (one git repo = one project) so you can pick which repos to clean. 'scan.roots' are searched up to maxDepth; interior dirs named in 'prune' are skipped (this list also excludes tool/cache homes like ~/.npm, ~/.cargo, ~/.local so language caches, global npm, editor extensions and the like are never mistaken for your projects — those are covered by the dev-cache rules instead). kind:project entries only define the regenerable dir NAMES to match (and the method); they are deleted with rm. kind:gitignore enumerates every git-ignored entry via 'git ls-files --others --ignored --directory' per repo and moves them to the Trash (recoverable — git-ignored files can include local .env/config). Junk found outside any git repo is ignored. IMPORTANT: a name must NOT appear in both 'prune' and a category's 'dirs' — the find expression evaluates the prune branch first, so a pruned name can never be reported. Names matched as junk are pruned anyway (find does not descend into them), so moving a name out of 'prune' into 'dirs' costs no scan time.",
   "scan": {
     "roots": ["~"],
     "maxDepth": 6,
-    "prune": ["Library", ".Trash", ".git", "Pods", ".venv", "venv", "vendor",
-              ".npm", ".cargo", ".rustup", ".local", ".cache", ".m2", ".gradle",
+    "prune": ["Library", ".Trash", ".git", "vendor",
+              ".npm", ".cargo", ".rustup", ".local", ".cache", ".m2",
               ".nuget", ".gem", ".bun", ".deno", ".nvm", ".sdkman", ".pub-cache",
               ".cocoapods", ".vscode", ".vscode-server", ".cursor", ".claude",
-              ".docker", ".kube", ".android"],
+              ".docker", ".kube", ".android", "site-packages",
+              "miniconda3", "anaconda3", "miniforge3", "mambaforge"],
     "maxRepos": 400
   },
   "categories": [
@@ -28,7 +29,7 @@
       "method": "rm",
       "default": false,
       "desc": "Bundler output (dist, build, out, .next, .nuxt, ...) — rebuilt by your build step.",
-      "dirs": ["dist", "build", "out", ".next", ".nuxt", ".svelte-kit", ".astro", ".turbo", ".parcel-cache", "storybook-static", "coverage"]
+      "dirs": ["dist", "build", "out", ".next", ".nuxt", ".output", ".svelte-kit", ".astro", ".angular", ".turbo", ".parcel-cache", "storybook-static", "coverage"]
     },
     {
       "kind": "project",
@@ -36,17 +37,35 @@
       "name": "Rust / JVM build output",
       "method": "rm",
       "default": false,
-      "desc": "target/ trees (Cargo, Maven, sbt) — rebuilt on next build.",
-      "dirs": ["target"]
+      "desc": "target/ trees (Cargo, Maven, sbt) and project-local Gradle state — rebuilt on next build.",
+      "dirs": ["target", ".gradle"]
     },
     {
       "kind": "project",
       "icon": "🐍",
-      "name": "Python caches",
+      "name": "Python caches & virtualenvs",
       "method": "rm",
       "default": false,
-      "desc": "__pycache__ and test/type-checker caches — regenerated automatically.",
-      "dirs": ["__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox"]
+      "desc": "__pycache__, test/type-checker caches and project virtualenvs — recreate a venv with your usual install step.",
+      "dirs": ["__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", ".nox", ".venv", "venv"]
+    },
+    {
+      "kind": "project",
+      "icon": "🍎",
+      "name": "Apple / mobile build output",
+      "method": "rm",
+      "default": false,
+      "desc": "CocoaPods Pods/, SwiftPM .build/, project-local DerivedData, Expo & NDK output — restored by pod install / next build.",
+      "dirs": ["Pods", ".build", "DerivedData", ".expo", ".cxx"]
+    },
+    {
+      "kind": "project",
+      "icon": "🎯",
+      "name": "Dart / Zig build output",
+      "method": "rm",
+      "default": false,
+      "desc": "Flutter/Dart .dart_tool and Zig cache/output — rebuilt on next build.",
+      "dirs": [".dart_tool", ".zig-cache", "zig-out"]
     },
     {
       "kind": "gitignore",
