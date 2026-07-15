@@ -1284,13 +1284,17 @@ EOF
 offer_project_scan() {
     printf '\n'
     printf '%b\n' "  ${CYAN}Also scan your code repos for build/dependency junk?${NC}"
-    printf '%b'   "  ${DIM}node_modules, dist, build, target, __pycache__, git-ignored — can take a moment.${NC} [y/N] "
-    # Act on the first keypress — no Enter needed. Anything but y/Y means No.
+    printf '%b'   "  ${DIM}node_modules, dist, build, target, __pycache__, git-ignored — can take a moment.${NC} [Y/n] "
+    # Act on the first keypress — no Enter needed. y/Y or Enter means Yes;
+    # any other key (n, Esc, ...) means No. A failed read also means No.
     local reply=""
-    IFS= read -r -s -n 1 reply 2>/dev/null || reply=""
+    if ! IFS= read -r -s -n 1 reply 2>/dev/null; then
+        printf '\n'
+        return 0
+    fi
     printf '\n'
     case "$reply" in
-        y|Y)
+        y|Y|"")
             PROJECTS_ENABLED=1
             printf '%b' " ${CYAN}Scanning code repos (this can take a moment)...${NC}"
             scan_projects
