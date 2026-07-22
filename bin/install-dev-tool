@@ -387,7 +387,7 @@ format_python_status() {
         py_frag="Python3 missing"
     elif [[ -z "$py_latest" || "$py_latest" == "Unknown" ]]; then
         py_frag="Py v$py_inst"
-    elif [[ "$py_inst" == "$py_latest" ]]; then
+    elif ! is_outdated "$py_inst" "$py_latest"; then
         py_frag="Py v$py_inst (Latest)"
     else
         py_frag="Py v$py_inst -> v$py_latest"
@@ -396,7 +396,7 @@ format_python_status() {
         uv_frag="uv missing"
     elif [[ -z "$uv_latest" || "$uv_latest" == "Unknown" ]]; then
         uv_frag="uv v$uv_inst"
-    elif [[ "$uv_inst" == "$uv_latest" ]]; then
+    elif ! is_outdated "$uv_inst" "$uv_latest"; then
         uv_frag="uv v$uv_inst (Latest)"
     else
         uv_frag="uv v$uv_inst -> v$uv_latest"
@@ -477,8 +477,12 @@ update_env_block() {
 }
 
 is_outdated() {
-    # is_outdated <installed> <latest> — true only when both versions are known
-    [ -n "$1" ] && [ -n "$2" ] && [ "$2" != "Unknown" ] && [ "$1" != "$2" ]
+    # is_outdated <installed> <latest> — true only when latest is known and
+    # strictly newer than installed. An installed version that is ahead of the
+    # reported latest (e.g. upstream released before the Homebrew formula API
+    # caught up) is NOT outdated, so we never suggest a downgrade.
+    [ -n "$1" ] && [ -n "$2" ] && [ "$2" != "Unknown" ] && [ "$1" != "$2" ] || return 1
+    [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" = "$1" ]
 }
 
 require_latest() {
