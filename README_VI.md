@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Tự động chuyển thư mục** — Gõ đường dẫn thư mục rồi Enter. Không cần gõ `cd`.
 - **Màu sắc file nổi bật** — File và thư mục có màu riêng, đẹp trên cả giao diện sáng lẫn tối.
 - **Cấu hình mặc định tốt hơn** — Tab completion không phân biệt hoa/thường, lịch sử thông minh hơn (không trùng lặp), lưu tới 100.000 lệnh, và các phím thường dùng hoạt động đúng ý (Home / End / Fn+Delete / Option+Mũi tên để nhảy theo từng từ).
-- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, Google Chrome, và OmniDiskSweeper. Chọn bằng phím mũi tên.
+- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, và Google Chrome. Chọn bằng phím mũi tên.
 - **Dọn dẹp Mac (`cdm`)** — Cài đặt [**CleanDevMac**](https://github.com/cleandevmac/cdm), công cụ dọn dẹp độc lập của tôi (vốn ra đời từ chính repo này). Nó thu hồi dung lượng đĩa từ các cache lập trình và sản phẩm build có thể tạo lại (Xcode, Go, Node/npm/pnpm/yarn, Gradle, Maven, Cargo, Python, Homebrew, Playwright, và nhiều hơn nữa), xóa cache của Electron/trình duyệt/ứng dụng, quét dọn rác dự án nhóm theo từng repo, thu hồi dung lượng Docker/Podman, và phát hiện dữ liệu còn sót lại từ các ứng dụng bạn đã gỡ cài đặt — không bao giờ xóa bất cứ thứ gì khi bạn chưa xác nhận kế hoạch chi tiết.
 
 ---
@@ -90,7 +90,7 @@ Chạy `install-dev-tool` để mở menu tương tác.
 - Homebrew được cài qua script chính thức (`https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`) và tự động cấu hình `shellenv`.
 - Python được cài kèm `uv` (trình quản lý package & project Python tốc độ cao của Astral).
 - JDK cài đặt bản chính thức Eclipse Temurin LTS và tự cấu hình `JAVA_HOME`.
-- Ứng dụng desktop (VSCode, Claude, OrbStack, MongoDB Compass, DBeaver, Google Chrome, Android Studio, Antigravity, OmniDiskSweeper) tự động tải về và đặt vào `/Applications`.
+- Ứng dụng desktop (VSCode, Claude, OrbStack, MongoDB Compass, DBeaver, Google Chrome, Android Studio, Antigravity) tự động tải về và đặt vào `/Applications`.
 - Git được cài qua công cụ chính thức của Apple (`xcode-select --install`).
 - Trình cài đặt tự kiểm tra phiên bản mới nhất khi khởi động.
 

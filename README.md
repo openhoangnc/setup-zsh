@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Auto-CD** — Type a directory path and press Enter. No need to type `cd` first.
 - **Colorful File Listings** — Files and folders get distinct colors that look good on both light and dark backgrounds.
 - **Better Defaults** — Case-insensitive Tab completion, smarter history (no duplicates), up to 100,000 commands saved, and everyday keys that just work (Home / End / Fn+Delete / Option+Arrow word jumps).
-- **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, Google Chrome, and OmniDiskSweeper. Navigate with arrow keys, pick what you need.
+- **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome. Navigate with arrow keys, pick what you need.
 - **Mac Cleanup (`cdm`)** — Installs [**CleanDevMac**](https://github.com/cleandevmac/cdm), my standalone cleanup tool (it started out in this repo). It reclaims disk space from regenerable developer caches and build artifacts (Xcode, Go, Node/npm/pnpm/yarn, Gradle, Maven, Cargo, Python, Homebrew, Playwright, and more), clears Electron/browser/app caches, sweeps project junk grouped per repo, reclaims Docker/Podman space, and surfaces leftover data from apps you've uninstalled — never deleting anything without an itemized confirmation.
 
 ---
@@ -90,7 +90,7 @@ Run `install-dev-tool` to open an interactive menu.
 - Homebrew installs via its official script (`https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`) and configures `shellenv`.
 - Python installs along with `uv` (Astral's fast Python package & project manager).
 - JDK installs official Eclipse Temurin LTS release and configures `JAVA_HOME`.
-- Desktop apps (VSCode, Claude, OrbStack, MongoDB Compass, DBeaver, Google Chrome, Android Studio, Antigravity, OmniDiskSweeper) are downloaded and placed in `/Applications` automatically.
+- Desktop apps (VSCode, Claude, OrbStack, MongoDB Compass, DBeaver, Google Chrome, Android Studio, Antigravity) are downloaded and placed in `/Applications` automatically.
 - Git is installed through Apple's official `xcode-select --install`.
 - The installer checks for the latest versions automatically on startup.
 
