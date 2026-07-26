@@ -490,6 +490,19 @@ zstyle ':completion:*' matcher-list '' 'm:{a-zA-Z}={A-Za-z}'
 # inherit it too — ~/.zshrc is read only by interactive shells. See the
 # setup-zsh block appended to ~/.zshenv below.
 typeset -U path PATH
+
+# 9. Environment fallback for hosts that read ONLY ~/.zshrc
+# ~/.zshenv stays the primary home for the environment, but some tools spawn
+# zsh with --no-rcs and then source ~/.zshrc explicitly — ~/.zshenv never runs,
+# so none of the PATH entries exist (Claude Code's shell snapshot works this
+# way). The failure is silent and confusing: the PATH those hosts end up with
+# is whatever their parent process was launched with, frozen in time, so tools
+# installed by install-dev-tool after launch are simply invisible to them.
+# Re-sourcing here costs nothing in a normal shell — the de-duplication above
+# collapses the repeated PATH entries.
+if [[ -f "$HOME/.zsh/setup-zsh/env.zsh" ]]; then
+	source "$HOME/.zsh/setup-zsh/env.zsh"
+fi
 # <<< setup-zsh <<<
 EOF
 
