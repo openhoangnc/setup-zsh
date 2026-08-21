@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Auto-CD** — Type a directory path and press Enter. No need to type `cd` first.
 - **Colorful File Listings** — Files and folders get distinct colors that look good on both light and dark backgrounds.
 - **Better Defaults** — Case-insensitive Tab completion, smarter history (no duplicates), up to 100,000 commands saved, and everyday keys that just work (Home / End / Fn+Delete / Option+Arrow word jumps).
-- **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome. Navigate with arrow keys, pick what you need.
+- **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome — plus a **Global Packages** row that updates the packages installed *through* those tools (global npm packages, Homebrew formulae & casks, uv tools, Bun globals). Navigate with arrow keys, pick what you need.
 - **Mac Cleanup (`cdm`)** — Installs [**CleanDevMac**](https://github.com/cleandevmac/cdm), my standalone cleanup tool (it started out in this repo). It reclaims disk space from regenerable developer caches and build artifacts (Xcode, Go, Node/npm/pnpm/yarn, Gradle, Maven, Cargo, Python, Homebrew, Playwright, and more), clears Electron/browser/app caches, sweeps project junk grouped per repo, reclaims Docker/Podman space, and surfaces leftover data from apps you've uninstalled — never deleting anything without an itemized confirmation.
 
 ---
@@ -76,7 +76,7 @@ Run `install-dev-tool` to open an interactive menu.
 ![install-dev-tool](install-dev-tool.png)
 
 - **Navigate**: Use **Up / Down / Left / Right** arrow keys to move the cursor (`❯`).
-- **Select tools**: Press **Space** or **Enter** to check/uncheck a tool (`[ ]` ↔ `[✓]`), or type its number (for items 10–17, type both digits quickly).
+- **Select tools**: Press **Space** or **Enter** to check/uncheck a tool (`[ ]` ↔ `[✓]`), or type its number (for items 10–19, type both digits quickly).
 - **Actions (single line at bottom)**:
   - **Install**: Move to `[I] Install` and press **Enter** (or type `I`).
   - **Select all**: Move to `[A] Toggle All` and press **Enter** (or type `A`).
@@ -92,6 +92,8 @@ Run `install-dev-tool` to open an interactive menu.
 - JDK installs official Eclipse Temurin LTS release and configures `JAVA_HOME`.
 - Desktop apps (VSCode, Claude, OrbStack, MongoDB Compass, DBeaver, Google Chrome, Android Studio, Antigravity) are downloaded and placed in `/Applications` automatically.
 - Git is installed through Apple's official `xcode-select --install`.
+- **Global Packages** (item 19) updates what your package managers installed, not the managers themselves: outdated global npm packages are reinstalled at `@latest` (`npm` and `corepack` are left to the Node.js tarball), then `brew update && brew upgrade`, `uv tool upgrade --all`, and Bun's global update. The row shows how many npm and Homebrew packages are outdated; uv and Bun have no such query, so they are simply updated when the row runs.
+- A run that only **updates** drops straight back to the menu. A first-time install waits for Enter first, so its setup notes stay readable — as does a run that reported an error.
 - The installer checks for the latest versions automatically on startup.
 
 ### 5. Mac Cleanup (`cdm`)

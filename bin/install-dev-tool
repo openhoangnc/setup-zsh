@@ -2,6 +2,7 @@
 
 # setup-zsh Developer Tool Installer
 # Installs and updates Bun, Go, Homebrew, JDK (Eclipse Temurin LTS), Node.js, Python & uv, Rust, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome on macOS.
+# Also updates the packages installed *through* those tools: global npm packages, Homebrew formulae & casks, uv tools, and Bun globals.
 
 # ANSI color codes
 RED='\033[0;31m'
@@ -64,6 +65,105 @@ trap cleanup_on_exit EXIT
 # INT/TERM must actually exit: a bare cleanup trap would swallow Ctrl+C
 # (bash runs the handler and restarts the interrupted read)
 trap 'exit 130' INT TERM
+
+# ---- Global package managers ------------------------------------------------
+# Resolve each manager the way its detect_* counterpart does: prefer the copy
+# this installer places under $HOME, so updates target the tool we manage, and
+# fall back to whatever is on PATH.
+npm_bin() {
+    if [[ -x "$HOME/.local/node/bin/npm" ]]; then
+        echo "$HOME/.local/node/bin/npm"
+    elif command -v npm &>/dev/null; then
+        command -v npm
+    fi
+}
+
+brew_bin() {
+    if [[ -x "/opt/homebrew/bin/brew" ]]; then
+        echo "/opt/homebrew/bin/brew"
+    elif [[ -x "/usr/local/bin/brew" ]]; then
+        echo "/usr/local/bin/brew"
+    elif command -v brew &>/dev/null; then
+        command -v brew
+    fi
+}
+
+uv_bin() {
+    if [[ -x "$HOME/.local/bin/uv" ]]; then
+        echo "$HOME/.local/bin/uv"
+    elif command -v uv &>/dev/null; then
+        command -v uv
+    fi
+}
+
+bun_bin() {
+    if [[ -x "$HOME/.bun/bin/bun" ]]; then
+        echo "$HOME/.bun/bin/bun"
+    elif command -v bun &>/dev/null; then
+        command -v bun
+    fi
+}
+
+npm_outdated_list() {
+    # Prints "<pkg>@<latest>" for every outdated global package.
+    # `npm outdated -g --parseable` emits
+    #   <path>:<pkg>@<wanted>:<pkg>@<current>:<pkg>@<latest>:global
+    # so field 4 is what we want. npm exits 1 whenever anything is outdated, so
+    # its exit status carries no error signal here.
+    # npm and corepack are skipped deliberately: they ship inside the Node.js
+    # tarball, so install_node owns their versions (preserve_node_globals skips
+    # them for the same reason) and an update here would be undone by the next
+    # Node.js upgrade.
+    local npm
+    npm=$(npm_bin)
+    [[ -n "$npm" ]] || return 0
+    # The fetch flags bound the registry round-trip. npm's own defaults are a
+    # 5-minute timeout with retries, which would leave the startup spinner
+    # hanging whenever the registry is unreachable.
+    "$npm" outdated -g --parseable --fetch-timeout=10000 --fetch-retries=0 2>/dev/null \
+        | cut -d: -f4 \
+        | grep -v -e '^npm@' -e '^corepack@'
+}
+
+brew_outdated_count() {
+    local brew
+    brew=$(brew_bin)
+    if [[ -z "$brew" ]]; then
+        echo 0
+        return
+    fi
+    # HOMEBREW_NO_AUTO_UPDATE keeps the menu fast and offline: the count comes
+    # from metadata brew already has on disk (so there is no network call to
+    # time out), and a real `brew update` runs as part of the upgrade itself.
+    # No --greedy, so the count matches what the upgrade will actually touch
+    # (casks that ship their own updater are excluded).
+    env HOMEBREW_NO_AUTO_UPDATE=1 "$brew" outdated --quiet 2>/dev/null | wc -l | tr -d ' '
+}
+
+spawn_global_checks() {
+    local dir="$1"
+    ( npm_outdated_list | wc -l | tr -d ' ' > "$dir/npm_outdated" ) &
+    ( brew_outdated_count > "$dir/brew_outdated" ) &
+}
+
+read_global_checks() {
+    local dir="$1"
+    OUTDATED_NPM=$(cat "$dir/npm_outdated" 2>/dev/null)
+    OUTDATED_BREW=$(cat "$dir/brew_outdated" 2>/dev/null)
+    # A killed or failed check leaves something that is not a number — keep that
+    # as "unknown" so it can never be mistaken for "nothing to update".
+    [[ "$OUTDATED_NPM" =~ ^[0-9]+$ ]] || OUTDATED_NPM=""
+    [[ "$OUTDATED_BREW" =~ ^[0-9]+$ ]] || OUTDATED_BREW=""
+}
+
+refresh_global_outdated() {
+    local dir
+    dir=$(mktemp -d /tmp/setup-zsh-globals.XXXXXX)
+    spawn_global_checks "$dir"
+    wait
+    read_global_checks "$dir"
+    rm -rf "$dir"
+}
 
 TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 
@@ -179,6 +279,10 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     echo "$LATEST" > "$TEMP_VER_DIR/homebrew"
 ) &
 
+# Count updatable global packages next to the version probes above, so the menu
+# can flag stale *packages* and not just stale tools.
+spawn_global_checks "$TEMP_VER_DIR"
+
 # Spinner loading indicator
 show_spinner() {
     local delay=0.1
@@ -217,6 +321,7 @@ LATEST_CODEX=$(cat "$TEMP_VER_DIR/codex" 2>/dev/null || echo "Unknown")
 LATEST_ANTIGRAVITY=$(cat "$TEMP_VER_DIR/antigravity" 2>/dev/null || echo "Unknown")
 LATEST_GCLOUD=$(cat "$TEMP_VER_DIR/gcloud" 2>/dev/null || echo "Unknown")
 LATEST_HOMEBREW=$(cat "$TEMP_VER_DIR/homebrew" 2>/dev/null || echo "Unknown")
+read_global_checks "$TEMP_VER_DIR"
 rm -rf "$TEMP_VER_DIR"
 
 # The curl|grep pipelines above yield an empty string (not "Unknown") when the
@@ -369,6 +474,17 @@ detect_gcloud() {
     fi
 }
 
+detect_global_pms() {
+    # Comma-separated names of the global package managers available here.
+    local names="" pm
+    for pm in npm brew uv bun; do
+        if [[ -n "$(${pm}_bin)" ]]; then
+            names+="${names:+, }${pm}"
+        fi
+    done
+    echo "$names"
+}
+
 format_status() {
     local installed="$1"
     local latest="$2"
@@ -433,6 +549,32 @@ format_git_status() {
         echo -e "${RED}[Not Installed]${NC}"
     else
         echo -e "${GREEN}[Installed: v$installed (System Managed)]${NC}"
+    fi
+}
+
+format_globals_status() {
+    local pms="$1" npm_n="$2" brew_n="$3"
+
+    if [[ -z "$pms" ]]; then
+        echo -e "${RED}[Not Installed]${NC}"
+        return
+    fi
+
+    # Only npm and Homebrew can be queried up front; uv and Bun are upgraded on
+    # demand, so they show up in the manager list but never carry a count. An
+    # empty count means the check itself failed — a manager with nothing to
+    # update reports 0.
+    local frags=""
+    [[ "$npm_n" =~ ^[1-9][0-9]*$ ]] && frags+="npm ${npm_n}"
+    [[ "$brew_n" =~ ^[1-9][0-9]*$ ]] && frags+="${frags:+, }brew ${brew_n}"
+
+    if [[ -n "$frags" ]]; then
+        echo -e "${YELLOW}[Outdated: ${frags}]${NC}"
+    elif [[ -z "$npm_n" || -z "$brew_n" ]]; then
+        # Never claim "Latest" on the strength of a check that did not run.
+        echo -e "${GREEN}[${pms}]${NC} ${YELLOW}(update check failed)${NC}"
+    else
+        echo -e "${GREEN}[${pms} (Latest)]${NC}"
     fi
 }
 
@@ -512,6 +654,16 @@ confirm_reinstall() {
     local name="$1"
     local version="$2"
     echo -n -e "${YELLOW}${name} is already up-to-date (v${version}). Re-install? (y/N): ${NC}"
+    read -r response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+confirm_update_globals() {
+    echo -n -e "${YELLOW}Global packages are already up-to-date. Run the updaters anyway? (y/N): ${NC}"
     read -r response
     if [[ "$response" =~ ^[Yy]$ ]]; then
         return 0
@@ -1372,14 +1524,95 @@ install_gcloud() {
     echo -e "${YELLOW}Run 'gcloud init' to authenticate and pick a project.${NC}"
 }
 
+update_global_packages() {
+    echo -e "${BLUE}Updating global packages...${NC}"
+    local failed=0
+
+    local npm
+    npm=$(npm_bin)
+    if [[ -n "$npm" ]]; then
+        echo -e "${BLUE}> npm global packages${NC}"
+        local pkgs
+        pkgs=$(npm_outdated_list)
+        if [[ -z "$pkgs" ]]; then
+            echo "Nothing to update."
+        else
+            # Install each package at its latest version instead of running
+            # `npm update -g`: update stays within the recorded semver range, so
+            # it never crosses a major version.
+            local npm_dir pkg
+            npm_dir=$(dirname "$npm")
+            while IFS= read -r pkg; do
+                [[ -n "$pkg" ]] || continue
+                echo "Installing ${pkg}..."
+                if ! PATH="$npm_dir:$PATH" "$npm" install -g "$pkg"; then
+                    echo -e "${YELLOW}Warning: failed to update ${pkg}.${NC}"
+                    failed=1
+                fi
+            done <<< "$pkgs"
+        fi
+    fi
+
+    local brew
+    brew=$(brew_bin)
+    if [[ -n "$brew" ]]; then
+        echo -e "${BLUE}> Homebrew formulae & casks${NC}"
+        if ! "$brew" update; then
+            echo -e "${YELLOW}Warning: 'brew update' reported problems.${NC}"
+        fi
+        # No --greedy: casks that ship their own auto-updater keep managing
+        # themselves rather than being reinstalled behind their own back.
+        if ! "$brew" upgrade; then
+            echo -e "${YELLOW}Warning: 'brew upgrade' reported problems.${NC}"
+            failed=1
+        fi
+    fi
+
+    local uv
+    uv=$(uv_bin)
+    if [[ -n "$uv" ]]; then
+        # uv exposes no "outdated" query, so the upgrade is simply always
+        # attempted: it prints "Nothing to upgrade" and exits 0 when current.
+        echo -e "${BLUE}> uv tools${NC}"
+        if ! "$uv" tool upgrade --all; then
+            echo -e "${YELLOW}Warning: 'uv tool upgrade --all' reported problems.${NC}"
+            failed=1
+        fi
+    fi
+
+    local bun
+    bun=$(bun_bin)
+    if [[ -n "$bun" ]]; then
+        echo -e "${BLUE}> Bun global packages${NC}"
+        # Older Bun releases have no global update; ask the binary itself rather
+        # than assuming, so the step degrades to a note instead of an error.
+        if "$bun" update --help 2>&1 | grep -q -- '--global'; then
+            if ! "$bun" update --global; then
+                echo -e "${YELLOW}Warning: 'bun update --global' reported problems.${NC}"
+                failed=1
+            fi
+        else
+            echo "This Bun version has no global update command. Skipping."
+        fi
+    fi
+
+    if [ "$failed" -eq 1 ]; then
+        echo -e "${YELLOW}Some global packages could not be updated - see the messages above.${NC}"
+        return 1
+    fi
+    echo -e "${GREEN}✓ Global packages are up to date!${NC}"
+}
+
 # Selection states (0 = unselected, 1 = selected)
-SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0; SEL_15=0; SEL_16=0; SEL_17=0; SEL_18=0
+SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0; SEL_15=0; SEL_16=0; SEL_17=0; SEL_18=0; SEL_19=0
 CURSOR=1
 do_install=0
+globals_ran=0
+fresh_install=0
 
 toggle_all() {
     local any_unselected=0
-    for i in {1..18}; do
+    for i in {1..19}; do
         eval "local val=\$SEL_$i"
         if [ "$val" -eq 0 ]; then
             any_unselected=1
@@ -1387,13 +1620,21 @@ toggle_all() {
         fi
     done
 
-    for i in {1..18}; do
+    for i in {1..19}; do
         if [ "$any_unselected" -eq 1 ]; then
             eval "SEL_$i=1"
         else
             eval "SEL_$i=0"
         fi
     done
+}
+
+globals_outdated() {
+    # Only npm and Homebrew are cheap to query up front, so they alone decide
+    # whether this row counts as outdated; uv and Bun are updated on demand.
+    [[ "$OUTDATED_NPM" =~ ^[1-9][0-9]*$ ]] && return 0
+    [[ "$OUTDATED_BREW" =~ ^[1-9][0-9]*$ ]] && return 0
+    return 1
 }
 
 python_outdated() {
@@ -1406,7 +1647,7 @@ python_outdated() {
 }
 
 select_outdated() {
-    for i in {1..18}; do
+    for i in {1..19}; do
         eval "SEL_$i=0"
     done
     is_outdated "$INST_BUN" "$LATEST_BUN" && SEL_1=1
@@ -1426,6 +1667,7 @@ select_outdated() {
     is_outdated "$INST_CLAUDE" "$LATEST_CLAUDE" && SEL_16=1
     is_outdated "$INST_CODEX" "$LATEST_CODEX" && SEL_17=1
     is_outdated "$INST_CHROME" "$LATEST_CHROME" && SEL_18=1
+    globals_outdated && SEL_19=1
 }
 
 has_outdated_tools() {
@@ -1446,7 +1688,36 @@ has_outdated_tools() {
     is_outdated "$INST_CLAUDE" "$LATEST_CLAUDE" && return 0
     is_outdated "$INST_CODEX" "$LATEST_CODEX" && return 0
     is_outdated "$INST_CHROME" "$LATEST_CHROME" && return 0
+    globals_outdated && return 0
     return 1
+}
+
+installed_version_for() {
+    # Installed version behind menu row $1 — empty means the row would be a
+    # first-time install rather than an update. Python & uv report empty unless
+    # both halves are present, since the missing half is a fresh install too.
+    case "$1" in
+        1) echo "$INST_BUN" ;;
+        2) echo "$INST_GO" ;;
+        3) echo "$INST_JDK" ;;
+        4) echo "$INST_NODE" ;;
+        5) [[ -n "$INST_PYTHON" && -n "$INST_UV" ]] && echo "$INST_PYTHON" ;;
+        6) echo "$INST_RUST" ;;
+        7) echo "$INST_GCLOUD" ;;
+        8) echo "$INST_GIT" ;;
+        9) echo "$INST_HOMEBREW" ;;
+        10) echo "$INST_ORB" ;;
+        11) echo "$INST_ANDROID_STUDIO" ;;
+        12) echo "$INST_VSCODE" ;;
+        13) echo "$INST_DBEAVER" ;;
+        14) echo "$INST_COMPASS" ;;
+        15) echo "$INST_ANTIGRAVITY" ;;
+        16) echo "$INST_CLAUDE" ;;
+        17) echo "$INST_CODEX" ;;
+        18) echo "$INST_CHROME" ;;
+        # Updating packages is never a first-time install of anything.
+        19) echo "$GLOBAL_PMS" ;;
+    esac
 }
 
 refresh_installed_tools() {
@@ -1469,6 +1740,7 @@ refresh_installed_tools() {
     INST_CODEX=$(detect_codex)
     INST_ANTIGRAVITY=$(detect_antigravity)
     INST_GCLOUD=$(detect_gcloud)
+    GLOBAL_PMS=$(detect_global_pms)
 }
 
 refresh_installed_tools
@@ -1491,9 +1763,9 @@ fi
 while true; do
     if [ "$do_install" -eq 0 ]; then
         printf "\033[?25l"
-        max_cursor=21
+        max_cursor=22
         if has_outdated_tools; then
-            max_cursor=22
+            max_cursor=23
         fi
         if [ "$CURSOR" -gt "$max_cursor" ]; then
             CURSOR=$max_cursor
@@ -1533,11 +1805,13 @@ while true; do
             show_line 16 "$(show_checkbox "$SEL_16") 16) 💥 Claude             $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
             show_line 17 "$(show_checkbox "$SEL_17") 17) 🧠 Codex              $(format_status "$INST_CODEX" "$LATEST_CODEX")"
             show_line 18 "$(show_checkbox "$SEL_18") 18) 🌐 Google Chrome      $(format_status "$INST_CHROME" "$LATEST_CHROME")"
+            echo -e "${PURPLE}── Global Packages ──────────────────────────────${NC}\033[K"
+            show_line 19 "$(show_checkbox "$SEL_19") 19) 📦 Global Packages    $(format_globals_status "$GLOBAL_PMS" "$OUTDATED_NPM" "$OUTDATED_BREW")"
             echo -e "\033[K"
             if has_outdated_tools; then
-                echo -e "$(show_action_item 19 "[I] Install")  $(show_action_item 20 "[A] Toggle All")  $(show_action_item 21 "[U] Select Outdated")  $(show_action_item 22 "[E] Exit")\033[K"
+                echo -e "$(show_action_item 20 "[I] Install")  $(show_action_item 21 "[A] Toggle All")  $(show_action_item 22 "[U] Select Outdated")  $(show_action_item 23 "[E] Exit")\033[K"
             else
-                echo -e "$(show_action_item 19 "[I] Install")    $(show_action_item 20 "[A] Toggle All")    $(show_action_item 21 "[E] Exit")\033[K"
+                echo -e "$(show_action_item 20 "[I] Install")    $(show_action_item 21 "[A] Toggle All")    $(show_action_item 22 "[E] Exit")\033[K"
             fi
             echo -e "${BLUE}==================================================${NC}\033[K"
         )
@@ -1580,10 +1854,10 @@ while true; do
         elif [[ "$key" = "e" || "$key" = "E" || "$key" = "q" || "$key" = "Q" ]]; then
             action="EXIT"
         elif [[ "$key" == "1" ]]; then
-            # Item 1, or 10-18 when a second digit follows quickly
+            # Item 1, or 10-19 when a second digit follows quickly
             second=""
             IFS= read -r -s -n 1 -t 1 second 2>/dev/null
-            if [[ "$second" =~ ^[0-8]$ ]]; then
+            if [[ "$second" =~ ^[0-9]$ ]]; then
                 action="NUM_1$second"
             else
                 if [[ "$second" == $'\e' ]]; then
@@ -1597,8 +1871,8 @@ while true; do
         
         case "$action" in
             UP)
-                if [ "$CURSOR" -ge 19 ]; then
-                    CURSOR=18
+                if [ "$CURSOR" -ge 20 ]; then
+                    CURSOR=19
                 else
                     CURSOR=$((CURSOR - 1))
                     if [ "$CURSOR" -lt 1 ]; then
@@ -1607,18 +1881,18 @@ while true; do
                 fi
                 ;;
             DOWN)
-                if [ "$CURSOR" -eq 18 ]; then
-                    CURSOR=19
-                elif [ "$CURSOR" -ge 19 ]; then
+                if [ "$CURSOR" -eq 19 ]; then
+                    CURSOR=20
+                elif [ "$CURSOR" -ge 20 ]; then
                     CURSOR=1
                 else
                     CURSOR=$((CURSOR + 1))
                 fi
                 ;;
             LEFT)
-                if [ "$CURSOR" -ge 19 ]; then
+                if [ "$CURSOR" -ge 20 ]; then
                     CURSOR=$((CURSOR - 1))
-                    if [ "$CURSOR" -lt 19 ]; then
+                    if [ "$CURSOR" -lt 20 ]; then
                         CURSOR=$max_cursor
                     fi
                 else
@@ -1629,10 +1903,10 @@ while true; do
                 fi
                 ;;
             RIGHT)
-                if [ "$CURSOR" -ge 19 ]; then
+                if [ "$CURSOR" -ge 20 ]; then
                     CURSOR=$((CURSOR + 1))
                     if [ "$CURSOR" -gt "$max_cursor" ]; then
-                        CURSOR=19
+                        CURSOR=20
                     fi
                 else
                     CURSOR=$((CURSOR + 1))
@@ -1642,20 +1916,20 @@ while true; do
                 fi
                 ;;
             SPACE|ENTER)
-                if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 18 ]; then
+                if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 19 ]; then
                     eval "SEL_$CURSOR=\$((1 - SEL_$CURSOR))"
-                elif [ "$CURSOR" -eq 19 ]; then
-                    do_install=1
                 elif [ "$CURSOR" -eq 20 ]; then
-                    toggle_all
+                    do_install=1
                 elif [ "$CURSOR" -eq 21 ]; then
+                    toggle_all
+                elif [ "$CURSOR" -eq 22 ]; then
                     if has_outdated_tools; then
                         select_outdated
                     else
                         echo -e "\n${BLUE}Goodbye!${NC}"
                         exit 0
                     fi
-                elif [ "$CURSOR" -eq 22 ]; then
+                elif [ "$CURSOR" -eq 23 ]; then
                     echo -e "\n${BLUE}Goodbye!${NC}"
                     exit 0
                 fi
@@ -1686,7 +1960,7 @@ while true; do
 
         # Count selected tools
         count=0
-        for i in {1..18}; do
+        for i in {1..19}; do
             eval "val=\$SEL_$i"
             if [ "$val" -eq 1 ]; then
                 count=$((count + 1))
@@ -1758,10 +2032,18 @@ while true; do
         if [ "$SEL_18" -eq 1 ] && [[ "$INST_CHROME" == "$LATEST_CHROME" ]] && ! confirm_reinstall "Google Chrome" "$LATEST_CHROME"; then
             SEL_18=0
         fi
+        if [ "$SEL_19" -eq 1 ]; then
+            if [[ -z "$GLOBAL_PMS" ]]; then
+                echo -e "${YELLOW}No supported global package manager found (npm, Homebrew, uv, Bun). Skipping.${NC}"
+                SEL_19=0
+            elif ! globals_outdated && ! confirm_update_globals; then
+                SEL_19=0
+            fi
+        fi
 
         # Recount after up-to-date checks
         count=0
-        for i in {1..18}; do
+        for i in {1..19}; do
             eval "val=\$SEL_$i"
             if [ "$val" -eq 1 ]; then
                 count=$((count + 1))
@@ -1777,6 +2059,19 @@ while true; do
             read -r || exit 1
             continue
         fi
+
+        # A batch that only updates what is already installed can drop straight
+        # back to the menu afterwards. A first-time install prints setup notes
+        # (env changes, `gcloud init`, JAVA_HOME, ...) that the menu redraw would
+        # wipe, so that case still waits for Enter.
+        fresh_install=0
+        for i in {1..19}; do
+            eval "val=\$SEL_$i"
+            if [ "$val" -eq 1 ] && [[ -z "$(installed_version_for "$i")" ]]; then
+                fresh_install=1
+                break
+            fi
+        done
 
         # Check for running GUI apps among remaining selected tools
         WAS_RUNNING_ORB=0
@@ -1980,13 +2275,21 @@ while true; do
                 echo ""
             fi
 
+            # 19. Global packages (npm, Homebrew, uv, Bun)
+            if [ "$SEL_19" -eq 1 ]; then
+                update_global_packages
+                echo ""
+            fi
+
             echo "=================================================="
             echo "Batch installation finished: $(date)"
             echo "=================================================="
         } 2>&1 | tee -a "$LOG_FILE"
         
+        globals_ran=$SEL_19
+
         # Reset selections after installation
-        SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0; SEL_15=0; SEL_16=0; SEL_17=0; SEL_18=0
+        SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0; SEL_15=0; SEL_16=0; SEL_17=0; SEL_18=0; SEL_19=0
         
         echo -e "${GREEN}Batch installation completed!${NC}"
         echo -e "Logs saved to: ${YELLOW}${LOG_FILE}${NC}"
@@ -1994,8 +2297,17 @@ while true; do
         if [ "$BATCH_MODE" -eq 1 ]; then
             exit 0
         fi
-        echo -e "\nPress Enter to return to the menu..."
-        read -r || exit 1
+        # Wait only when there is something to read: setup notes from a first
+        # install, or a failure the menu redraw would otherwise wipe. A plain
+        # update goes straight back to the list.
+        if [ "$fresh_install" -eq 1 ] || grep -qE 'Error:|could not be updated' "$LOG_FILE"; then
+            echo -e "\nPress Enter to return to the menu..."
+            read -r || exit 1
+        fi
         refresh_installed_tools
+        if [ "$globals_ran" -eq 1 ]; then
+            echo -e "${CYAN}Re-checking global packages...${NC}"
+            refresh_global_outdated
+        fi
     fi
 done
