@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Tự động chuyển thư mục** — Gõ đường dẫn thư mục rồi Enter. Không cần gõ `cd`.
 - **Màu sắc file nổi bật** — File và thư mục có màu riêng, đẹp trên cả giao diện sáng lẫn tối.
 - **Cấu hình mặc định tốt hơn** — Tab completion không phân biệt hoa/thường, lịch sử thông minh hơn (không trùng lặp), lưu tới 100.000 lệnh, và các phím thường dùng hoạt động đúng ý (Home / End / Fn+Delete / Option+Mũi tên để nhảy theo từng từ).
-- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, và Google Chrome — cùng mục **Global Packages** để cập nhật các package được cài *bằng* những công cụ đó (npm package toàn cục, formula & cask của Homebrew, uv tool, Bun global). Chọn bằng phím mũi tên.
+- **Cài đặt công cụ lập trình (`install-dev-tool`)** — Menu tương tác để cài Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, và Google Chrome — cùng mục **Global Packages** để cập nhật các package được cài *bằng* các trình quản lý — npm, pnpm, Yarn, Bun, Homebrew, uv, pipx, RubyGems, Composer, cargo — cho những trình bạn đang có. Chọn bằng phím mũi tên.
 - **Dọn dẹp Mac (`cdm`)** — Cài đặt [**CleanDevMac**](https://github.com/cleandevmac/cdm), công cụ dọn dẹp độc lập của tôi (vốn ra đời từ chính repo này). Nó thu hồi dung lượng đĩa từ các cache lập trình và sản phẩm build có thể tạo lại (Xcode, Go, Node/npm/pnpm/yarn, Gradle, Maven, Cargo, Python, Homebrew, Playwright, và nhiều hơn nữa), xóa cache của Electron/trình duyệt/ứng dụng, quét dọn rác dự án nhóm theo từng repo, thu hồi dung lượng Docker/Podman, và phát hiện dữ liệu còn sót lại từ các ứng dụng bạn đã gỡ cài đặt — không bao giờ xóa bất cứ thứ gì khi bạn chưa xác nhận kế hoạch chi tiết.
 
 ---
@@ -76,7 +76,7 @@ Chạy `install-dev-tool` để mở menu tương tác.
 ![install-dev-tool](install-dev-tool.png)
 
 - **Di chuyển**: Dùng phím **Lên / Xuống / Trái / Phải** để di chuyển con trỏ (`❯`).
-- **Chọn công cụ**: Nhấn **Space** hoặc **Enter** để đánh dấu chọn (`[ ]` ↔ `[✓]`), hoặc gõ số thứ tự của công cụ (với các mục 10–19, gõ nhanh cả hai chữ số).
+- **Chọn công cụ**: Nhấn **Space** hoặc **Enter** để đánh dấu chọn (`[ ]` ↔ `[✓]`), hoặc gõ số thứ tự của công cụ (với các mục 10–19, gõ nhanh cả hai chữ số). Ở dòng **Global Packages**, **Enter** mở bảng chi tiết theo từng trình quản lý thay vì đánh dấu — dùng **Space** hoặc `19` để chọn.
 - **Thao tác (gộp trên 1 dòng ở dưới)**:
   - **Cài đặt**: Chuyển đến `[I] Install` rồi nhấn **Enter** (hoặc gõ `I`).
   - **Chọn tất cả**: Chuyển đến `[A] Toggle All` rồi nhấn **Enter** (hoặc gõ `A`).
@@ -92,7 +92,7 @@ Chạy `install-dev-tool` để mở menu tương tác.
 - JDK cài đặt bản chính thức Eclipse Temurin LTS và tự cấu hình `JAVA_HOME`.
 - Ứng dụng desktop (VSCode, Claude, OrbStack, MongoDB Compass, DBeaver, Google Chrome, Android Studio, Antigravity) tự động tải về và đặt vào `/Applications`.
 - Git được cài qua công cụ chính thức của Apple (`xcode-select --install`).
-- **Global Packages** (mục 19) cập nhật những gì các trình quản lý package đã cài, không phải bản thân chúng: npm package toàn cục đã cũ được cài lại ở `@latest` (`npm` và `corepack` do bản Node.js quản lý nên được bỏ qua), sau đó là `brew update && brew upgrade`, `uv tool upgrade --all` và lệnh cập nhật global của Bun. Dòng này hiển thị số package npm và Homebrew đã cũ; uv và Bun không có cách đếm tương tự nên chỉ được cập nhật khi chạy.
+- **Global Packages** (mục 19) cập nhật những gì các trình quản lý package đã cài, không phải bản thân chúng, và bao gồm mọi trình bạn có: npm (package toàn cục cũ cài lại ở `@latest`; `npm`/`corepack` để bản Node.js lo), pnpm (`update -g --latest`), Yarn Classic (`global upgrade --latest`), Bun (`update --global`), Homebrew (`update && upgrade`), uv (`tool upgrade --all`), pipx (`upgrade-all`), RubyGems (`gem update`, bỏ qua Ruby hệ thống của macOS), Composer (`global update`) và cargo (`install-update -a`, chỉ khi có plugin `cargo-install-update`). Dòng này hiển thị số package npm và Homebrew đã cũ (hai trình rẻ để kiểm tra); **nhấn Enter trên dòng đó để xem chi tiết theo từng trình quản lý**. Sau khi cập nhật, cache của từng trình cũng được dọn (npm/Yarn `cache clean`, pnpm `store prune`, Bun `pm cache rm`, `brew cleanup`, uv `cache prune`, `gem cleanup`, Composer `clear-cache`) — theo kiểu best-effort, nên lỗi khi dọn cache không làm hỏng kết quả cập nhật.
 - Lần chạy chỉ **cập nhật** sẽ quay lại menu ngay. Nếu có cài mới, chương trình chờ Enter để bạn kịp đọc hướng dẫn thiết lập — lần chạy báo lỗi cũng vậy.
 - Trình cài đặt tự kiểm tra phiên bản mới nhất khi khởi động.
 

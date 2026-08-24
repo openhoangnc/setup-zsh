@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Auto-CD** — Type a directory path and press Enter. No need to type `cd` first.
 - **Colorful File Listings** — Files and folders get distinct colors that look good on both light and dark backgrounds.
 - **Better Defaults** — Case-insensitive Tab completion, smarter history (no duplicates), up to 100,000 commands saved, and everyday keys that just work (Home / End / Fn+Delete / Option+Arrow word jumps).
-- **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome — plus a **Global Packages** row that updates the packages installed *through* those tools (global npm packages, Homebrew formulae & casks, uv tools, Bun globals). Navigate with arrow keys, pick what you need.
+- **Dev Tools Installer (`install-dev-tool`)** — An interactive menu to install Bun, Go, Homebrew, Node.js, Python & uv, Rust, JDK (Eclipse Temurin LTS), Codex, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome — plus a **Global Packages** row that updates the packages installed *through* your package managers — npm, pnpm, Yarn, Bun, Homebrew, uv, pipx, RubyGems, Composer, and cargo — for whichever ones you have. Navigate with arrow keys, pick what you need.
 - **Mac Cleanup (`cdm`)** — Installs [**CleanDevMac**](https://github.com/cleandevmac/cdm), my standalone cleanup tool (it started out in this repo). It reclaims disk space from regenerable developer caches and build artifacts (Xcode, Go, Node/npm/pnpm/yarn, Gradle, Maven, Cargo, Python, Homebrew, Playwright, and more), clears Electron/browser/app caches, sweeps project junk grouped per repo, reclaims Docker/Podman space, and surfaces leftover data from apps you've uninstalled — never deleting anything without an itemized confirmation.
 
 ---
@@ -76,7 +76,7 @@ Run `install-dev-tool` to open an interactive menu.
 ![install-dev-tool](install-dev-tool.png)
 
 - **Navigate**: Use **Up / Down / Left / Right** arrow keys to move the cursor (`❯`).
-- **Select tools**: Press **Space** or **Enter** to check/uncheck a tool (`[ ]` ↔ `[✓]`), or type its number (for items 10–19, type both digits quickly).
+- **Select tools**: Press **Space** or **Enter** to check/uncheck a tool (`[ ]` ↔ `[✓]`), or type its number (for items 10–19, type both digits quickly). On the **Global Packages** row, **Enter** opens a per-manager breakdown instead of toggling — use **Space** or `19` to select it.
 - **Actions (single line at bottom)**:
   - **Install**: Move to `[I] Install` and press **Enter** (or type `I`).
   - **Select all**: Move to `[A] Toggle All` and press **Enter** (or type `A`).
@@ -92,7 +92,7 @@ Run `install-dev-tool` to open an interactive menu.
 - JDK installs official Eclipse Temurin LTS release and configures `JAVA_HOME`.
 - Desktop apps (VSCode, Claude, OrbStack, MongoDB Compass, DBeaver, Google Chrome, Android Studio, Antigravity) are downloaded and placed in `/Applications` automatically.
 - Git is installed through Apple's official `xcode-select --install`.
-- **Global Packages** (item 19) updates what your package managers installed, not the managers themselves: outdated global npm packages are reinstalled at `@latest` (`npm` and `corepack` are left to the Node.js tarball), then `brew update && brew upgrade`, `uv tool upgrade --all`, and Bun's global update. The row shows how many npm and Homebrew packages are outdated; uv and Bun have no such query, so they are simply updated when the row runs.
+- **Global Packages** (item 19) updates what your package managers installed, not the managers themselves. It covers every manager you have: npm (outdated globals reinstalled at `@latest`; `npm`/`corepack` are left to the Node.js tarball), pnpm (`update -g --latest`), Yarn Classic (`global upgrade --latest`), Bun (`update --global`), Homebrew (`update && upgrade`), uv (`tool upgrade --all`), pipx (`upgrade-all`), RubyGems (`gem update`, skipped for macOS's system Ruby), Composer (`global update`), and cargo (`install-update -a`, only when the `cargo-install-update` plugin is present). The row shows how many npm and Homebrew packages are outdated (the two that are cheap to poll); **press Enter on the row for a full per-manager breakdown** of what would change. After updating, each manager's cache is cleaned too (npm/Yarn `cache clean`, pnpm `store prune`, Bun `pm cache rm`, `brew cleanup`, uv `cache prune`, `gem cleanup`, Composer `clear-cache`) — best-effort, so a cleanup hiccup never fails the update.
 - A run that only **updates** drops straight back to the menu. A first-time install waits for Enter first, so its setup notes stay readable — as does a run that reported an error.
 - The installer checks for the latest versions automatically on startup.
 

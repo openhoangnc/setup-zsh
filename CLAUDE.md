@@ -112,11 +112,29 @@ run is kept. After the batch the menu returns on its own unless there is somethi
 read first — a first-time install (decided by `installed_version_for`, which reports the
 row's currently installed version) or an error found in that log.
 
-Row 19 updates the *packages* the managers installed rather than the managers themselves.
-Only npm and Homebrew can be queried cheaply enough to show a count in the menu
-(`npm_outdated_list`, `brew_outdated_count`, launched by `spawn_global_checks` alongside
-the version probes); uv and Bun have no equivalent query, so they are simply upgraded when
-the row runs, and an empty count means the check failed — never "nothing to update".
+Row 19 ("Global Packages") updates the *packages* the managers installed rather than the
+managers themselves. The supported managers are listed in `GLOBAL_PM_ORDER`; each is
+driven by a triple of `<pm>_bin` (resolver, applies guards — Yarn must be classic, `gem`
+must not be the system Ruby, `cargo` needs the `cargo-install-update` plugin),
+`pm_upgrade_<pm>`, and `pm_detail_<pm>`, plus an optional `pm_cleanup_<pm>`. `update_global_packages`, `show_globals_details`,
+and `detect_global_pms` all just loop `GLOBAL_PM_ORDER` and skip any manager whose
+resolver returns empty, so adding a manager means adding those three functions plus its
+name to the order string — nothing else. JS managers run through `run_js_pm`, which puts
+the right global bin dir on PATH (and exports `PNPM_HOME` for pnpm, without which pnpm
+refuses to touch globals).
+
+Only npm and Homebrew are cheap enough to poll at startup, so they alone carry the
+headline count in the menu (`npm_outdated_list`, `brew_outdated_count`, launched by
+`spawn_global_checks` alongside the version probes) and are the only signal `globals_outdated`
+uses for `[U]`. The rest are updated on demand; an empty npm/brew count means the check
+failed — never "nothing to update". After the upgrade loop, `update_global_packages` runs a best-effort cache-cleanup pass
+(`npm cache clean`, `pnpm store prune`, `brew cleanup`, `uv cache prune`, `gem cleanup`,
+`composer clear-cache`, ...): it calls `pm_cleanup_<pm>` for every manager that defines one
+(guarded by `declare -f`, so pipx/cargo are skipped), and cleanup failures only warn — they
+never flip `$failed`, so they can't force the post-batch pause. The full per-manager
+breakdown is computed lazily by `show_globals_details`, opened with **Enter** on row 19
+(Space and the `19` key still toggle selection — the `SPACE|ENTER` case special-cases
+`action = ENTER` on that row).
 
 ### `bin/git-sync`
 

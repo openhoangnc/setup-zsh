@@ -2,7 +2,7 @@
 
 # setup-zsh Developer Tool Installer
 # Installs and updates Bun, Go, Homebrew, JDK (Eclipse Temurin LTS), Node.js, Python & uv, Rust, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome on macOS.
-# Also updates the packages installed *through* those tools: global npm packages, Homebrew formulae & casks, uv tools, and Bun globals.
+# Also updates the packages installed *through* those tools: global packages of npm, pnpm, Yarn (classic), Bun, Homebrew, uv, pipx, RubyGems, Composer, and cargo (via cargo-install-update).
 
 # ANSI color codes
 RED='\033[0;31m'
@@ -102,6 +102,89 @@ bun_bin() {
     elif command -v bun &>/dev/null; then
         command -v bun
     fi
+}
+
+# The managers this row can update, in the order they are shown and run. A
+# manager appears only when its <pm>_bin resolver returns a usable path.
+GLOBAL_PM_ORDER="npm pnpm yarn bun brew uv pipx gem composer cargo"
+
+pnpm_home() {
+    # pnpm keeps its global packages under $PNPM_HOME (default ~/Library/pnpm on
+    # macOS) and refuses to touch globals unless that dir is on PATH.
+    echo "${PNPM_HOME:-$HOME/Library/pnpm}"
+}
+
+pnpm_bin() {
+    if [[ -x "$HOME/.local/node/bin/pnpm" ]]; then
+        echo "$HOME/.local/node/bin/pnpm"
+    elif command -v pnpm &>/dev/null; then
+        command -v pnpm
+    fi
+}
+
+yarn_bin() {
+    local y=""
+    if [[ -x "$HOME/.local/node/bin/yarn" ]]; then
+        y="$HOME/.local/node/bin/yarn"
+    elif command -v yarn &>/dev/null; then
+        y="$(command -v yarn)"
+    fi
+    [[ -n "$y" ]] || return 0
+    # Only Yarn Classic (1.x) has `yarn global`; Berry (2+) removed it entirely,
+    # so a modern Yarn has no global packages for us to manage.
+    case "$("$y" --version 2>/dev/null)" in
+        1.*) echo "$y" ;;
+    esac
+}
+
+pipx_bin() {
+    if [[ -x "$HOME/.local/bin/pipx" ]]; then
+        echo "$HOME/.local/bin/pipx"
+    elif command -v pipx &>/dev/null; then
+        command -v pipx
+    fi
+}
+
+gem_bin() {
+    local g
+    g="$(command -v gem 2>/dev/null)" || return 0
+    [[ -n "$g" ]] || return 0
+    # Skip Apple's system Ruby: `gem update` there wants sudo and can damage the
+    # OS-managed gemset. Only manage a user-writable Ruby (Homebrew, rbenv, ...).
+    case "$g" in
+        /usr/bin/*|/System/*) return 0 ;;
+    esac
+    echo "$g"
+}
+
+composer_bin() {
+    command -v composer 2>/dev/null || true
+}
+
+cargo_bin() {
+    # cargo installs global binaries but cannot upgrade them on its own; that
+    # needs the cargo-update plugin (`cargo install-update`). Advertise cargo as
+    # a manager only when the plugin is present, so we never offer an update we
+    # cannot perform.
+    if [[ ! -x "$HOME/.cargo/bin/cargo-install-update" ]] && ! command -v cargo-install-update &>/dev/null; then
+        return 0
+    fi
+    if [[ -x "$HOME/.cargo/bin/cargo" ]]; then
+        echo "$HOME/.cargo/bin/cargo"
+    elif command -v cargo &>/dev/null; then
+        command -v cargo
+    fi
+}
+
+# Run a JS package manager with its global bin dir on PATH so global installs
+# resolve to the right prefix. pnpm additionally needs PNPM_HOME exported.
+run_js_pm() {
+    local bin="$1"; shift
+    local dir; dir="$(dirname "$bin")"
+    case "$bin" in
+        *pnpm) env PNPM_HOME="$(pnpm_home)" PATH="$(pnpm_home):$(pnpm_home)/bin:$dir:$PATH" "$bin" "$@" ;;
+        *) PATH="$dir:$PATH" "$bin" "$@" ;;
+    esac
 }
 
 npm_outdated_list() {
@@ -475,9 +558,11 @@ detect_gcloud() {
 }
 
 detect_global_pms() {
-    # Comma-separated names of the global package managers available here.
+    # Comma-separated names of the global package managers available here, in
+    # GLOBAL_PM_ORDER. Each <pm>_bin resolver applies its own guards (Yarn must
+    # be classic, cargo needs cargo-install-update, gem must be non-system).
     local names="" pm
-    for pm in npm brew uv bun; do
+    for pm in $GLOBAL_PM_ORDER; do
         if [[ -n "$(${pm}_bin)" ]]; then
             names+="${names:+, }${pm}"
         fi
@@ -560,21 +645,27 @@ format_globals_status() {
         return
     fi
 
-    # Only npm and Homebrew can be queried up front; uv and Bun are upgraded on
-    # demand, so they show up in the manager list but never carry a count. An
-    # empty count means the check itself failed — a manager with nothing to
-    # update reports 0.
+    # Only npm and Homebrew are cheap to poll at startup, so they carry the
+    # headline count. The rest are updated on demand (press Enter on this row for
+    # a full per-manager breakdown), so the status names how many managers are
+    # available rather than pretending to know every one is current. An empty
+    # npm/brew count means that check failed — a manager with nothing outdated
+    # reports 0.
+    local n_mgr unit
+    n_mgr=$(awk -F', ' '{print NF}' <<< "$pms")
+    unit="managers"; [[ "$n_mgr" -eq 1 ]] && unit="manager"
+
     local frags=""
     [[ "$npm_n" =~ ^[1-9][0-9]*$ ]] && frags+="npm ${npm_n}"
     [[ "$brew_n" =~ ^[1-9][0-9]*$ ]] && frags+="${frags:+, }brew ${brew_n}"
 
     if [[ -n "$frags" ]]; then
-        echo -e "${YELLOW}[Outdated: ${frags}]${NC}"
+        echo -e "${YELLOW}[${n_mgr} ${unit}, outdated: ${frags}]${NC} ${CYAN}(Enter for details)${NC}"
     elif [[ -z "$npm_n" || -z "$brew_n" ]]; then
-        # Never claim "Latest" on the strength of a check that did not run.
-        echo -e "${GREEN}[${pms}]${NC} ${YELLOW}(update check failed)${NC}"
+        # Never claim "current" on the strength of a check that did not run.
+        echo -e "${GREEN}[${n_mgr} ${unit}]${NC} ${YELLOW}(update check failed)${NC} ${CYAN}(Enter for details)${NC}"
     else
-        echo -e "${GREEN}[${pms} (Latest)]${NC}"
+        echo -e "${GREEN}[${n_mgr} ${unit} ready]${NC} ${CYAN}(Enter for details)${NC}"
     fi
 }
 
@@ -1524,85 +1615,260 @@ install_gcloud() {
     echo -e "${YELLOW}Run 'gcloud init' to authenticate and pick a project.${NC}"
 }
 
+# ---- Per-manager upgrade commands -------------------------------------------
+# Each takes the resolved manager binary and returns non-zero on failure. They
+# are dispatched by GLOBAL_PM_ORDER, so adding a manager here plus a matching
+# <pm>_bin resolver is all it takes to have it updated and shown in details.
+
+pm_upgrade_npm() {
+    local bin="$1" pkgs pkg rc=0
+    pkgs=$(npm_outdated_list)
+    if [[ -z "$pkgs" ]]; then
+        echo "Nothing to update."
+        return 0
+    fi
+    # Install each outdated package at @latest (npm and corepack are excluded by
+    # npm_outdated_list because the Node.js tarball owns them).
+    while IFS= read -r pkg; do
+        [[ -n "$pkg" ]] || continue
+        echo "Installing ${pkg}..."
+        if ! run_js_pm "$bin" install -g "$pkg"; then
+            echo -e "${YELLOW}Warning: failed to update ${pkg}.${NC}"
+            rc=1
+        fi
+    done <<< "$pkgs"
+    return $rc
+}
+
+pm_upgrade_pnpm() {
+    # --latest ignores the recorded ranges so pinned globals actually move.
+    run_js_pm "$1" update -g --latest
+}
+
+pm_upgrade_yarn() {
+    # Yarn Classic only (yarn_bin already filtered out Berry).
+    run_js_pm "$1" global upgrade --latest
+}
+
+pm_upgrade_bun() {
+    local bin="$1"
+    # Older Bun releases have no global update; ask the binary rather than
+    # assume, so the step degrades to a note instead of an error.
+    if "$bin" update --help 2>&1 | grep -q -- '--global'; then
+        "$bin" update --global
+    else
+        echo "This Bun version has no global update command. Skipping."
+    fi
+}
+
+pm_upgrade_brew() {
+    local bin="$1" rc=0
+    if ! "$bin" update; then
+        echo -e "${YELLOW}Warning: 'brew update' reported problems.${NC}"
+    fi
+    # No --greedy: casks that ship their own auto-updater keep managing
+    # themselves rather than being reinstalled behind their own back.
+    "$bin" upgrade || rc=1
+    return $rc
+}
+
+pm_upgrade_uv() {
+    # uv exposes no "outdated" query, so the upgrade is always attempted; it
+    # prints "Nothing to upgrade" and exits 0 when everything is current.
+    "$1" tool upgrade --all
+}
+
+pm_upgrade_pipx() {
+    "$1" upgrade-all
+}
+
+pm_upgrade_gem() {
+    # gem_bin already excluded Apple's system Ruby, so this is a user gemset.
+    # --no-document skips local rdoc/ri generation (faster, quieter).
+    "$1" update --no-document
+}
+
+pm_upgrade_composer() {
+    "$1" global update
+}
+
+pm_upgrade_cargo() {
+    # cargo_bin guaranteed the cargo-update plugin is present.
+    "$1" install-update -a
+}
+
+# ---- Per-manager cache cleanup ----------------------------------------------
+# Reclaim the download/store caches an update just filled. Best-effort: a
+# cleanup that fails only warns and never fails the update. Managers with no
+# cache-clean command (pipx, cargo) simply define no function and are skipped.
+
+pm_cleanup_npm() {
+    run_js_pm "$1" cache clean --force
+}
+
+pm_cleanup_pnpm() {
+    # Drops packages in the content-addressable store that nothing references.
+    run_js_pm "$1" store prune
+}
+
+pm_cleanup_yarn() {
+    run_js_pm "$1" cache clean
+}
+
+pm_cleanup_bun() {
+    "$1" pm cache rm
+}
+
+pm_cleanup_brew() {
+    # Removes stale lock files and outdated downloads for all formulae & casks.
+    "$1" cleanup
+}
+
+pm_cleanup_uv() {
+    # prune (not clean) keeps entries still in use and only drops dangling ones.
+    "$1" cache prune
+}
+
+pm_cleanup_gem() {
+    # RubyGems has no cache-only command; cleanup removes superseded gem
+    # versions (and their cached .gem files), keeping the newest of each.
+    "$1" cleanup
+}
+
+pm_cleanup_composer() {
+    "$1" clear-cache
+}
+
+# ---- Per-manager detail views -----------------------------------------------
+# Each prints an indented, human-readable outdated report. Managers without an
+# outdated query just state the command their update will run.
+
+pm_detail_npm() {
+    local out
+    out=$("$1" outdated -g --parseable --fetch-timeout=10000 --fetch-retries=0 2>/dev/null | awk -F: '
+        $4 != "" {
+            name=$4; sub(/@[^@]*$/, "", name)
+            latest=$4; sub(/^.*@/, "", latest)
+            cur=$3; sub(/^.*@/, "", cur)
+            if (name=="npm" || name=="corepack") next
+            printf "    %-30s %s -> %s\n", name, cur, latest
+        }')
+    if [[ -n "$out" ]]; then echo "$out"; else echo "    Up to date."; fi
+}
+
+pm_detail_pnpm() {
+    local out
+    out=$(run_js_pm "$1" outdated -g 2>/dev/null)
+    if [[ -n "$out" ]]; then echo "$out" | sed 's/^/    /'; else echo "    Up to date."; fi
+}
+
+pm_detail_yarn() {
+    echo "    Yarn Classic has no global outdated report."
+    echo "    Update runs: yarn global upgrade --latest"
+}
+
+pm_detail_bun() {
+    echo "    Bun has no outdated query. Update runs: bun update --global"
+}
+
+pm_detail_brew() {
+    local out
+    out=$(env HOMEBREW_NO_AUTO_UPDATE=1 "$1" outdated --verbose 2>/dev/null)
+    if [[ -n "$out" ]]; then echo "$out" | sed 's/^/    /'; else echo "    Up to date."; fi
+}
+
+pm_detail_uv() {
+    local out
+    out=$("$1" tool list 2>/dev/null)
+    [[ -n "$out" ]] && echo "$out" | sed 's/^/    /'
+    echo "    Update runs: uv tool upgrade --all"
+}
+
+pm_detail_pipx() {
+    local out
+    out=$("$1" list --short 2>/dev/null)
+    [[ -n "$out" ]] && { echo "    Installed:"; echo "$out" | sed 's/^/      /'; }
+    echo "    Update runs: pipx upgrade-all"
+}
+
+pm_detail_gem() {
+    local out
+    out=$("$1" outdated 2>/dev/null)
+    if [[ -n "$out" ]]; then echo "$out" | sed 's/^/    /'; else echo "    Up to date."; fi
+}
+
+pm_detail_composer() {
+    local out
+    out=$("$1" global outdated --direct 2>/dev/null)
+    if [[ -n "$out" ]]; then echo "$out" | sed 's/^/    /'; else echo "    Up to date."; fi
+}
+
+pm_detail_cargo() {
+    local out
+    out=$("$1" install-update -l 2>/dev/null)
+    if [[ -n "$out" ]]; then echo "$out" | sed 's/^/    /'; else echo "    No cargo-installed binaries."; fi
+}
+
+# Full-screen breakdown of every available manager, opened with Enter on the
+# Global Packages row. Runs each manager's detail view on demand (some hit the
+# network), then waits for a key and returns to the menu.
+show_globals_details() {
+    local pms pm bin _key
+    printf "\033[?25h"
+    printf '\033[2J\033[H'
+    echo -e "${BLUE}==================================================${NC}"
+    echo -e "${BLUE}        📦 Global Packages — outdated details${NC}"
+    echo -e "${BLUE}==================================================${NC}"
+    pms="$(detect_global_pms)"
+    if [[ -z "$pms" ]]; then
+        echo -e "${YELLOW}No supported global package manager found.${NC}"
+    else
+        echo -e "${CYAN}Checking each manager (some queries hit the network)...${NC}"
+        echo ""
+        for pm in $GLOBAL_PM_ORDER; do
+            bin="$(${pm}_bin)"
+            [[ -n "$bin" ]] || continue
+            echo -e "${PURPLE}> ${pm}${NC} ${YELLOW}(${bin})${NC}"
+            pm_detail_"$pm" "$bin"
+            echo ""
+        done
+    fi
+    echo -e "${BLUE}==================================================${NC}"
+    echo -n -e "${CYAN}Press any key to return to the menu...${NC}"
+    IFS= read -r -s -n 1 _key 2>/dev/null
+    printf "\033[?25l"
+}
+
 update_global_packages() {
     echo -e "${BLUE}Updating global packages...${NC}"
-    local failed=0
-
-    local npm
-    npm=$(npm_bin)
-    if [[ -n "$npm" ]]; then
-        echo -e "${BLUE}> npm global packages${NC}"
-        local pkgs
-        pkgs=$(npm_outdated_list)
-        if [[ -z "$pkgs" ]]; then
-            echo "Nothing to update."
-        else
-            # Install each package at its latest version instead of running
-            # `npm update -g`: update stays within the recorded semver range, so
-            # it never crosses a major version.
-            local npm_dir pkg
-            npm_dir=$(dirname "$npm")
-            while IFS= read -r pkg; do
-                [[ -n "$pkg" ]] || continue
-                echo "Installing ${pkg}..."
-                if ! PATH="$npm_dir:$PATH" "$npm" install -g "$pkg"; then
-                    echo -e "${YELLOW}Warning: failed to update ${pkg}.${NC}"
-                    failed=1
-                fi
-            done <<< "$pkgs"
-        fi
-    fi
-
-    local brew
-    brew=$(brew_bin)
-    if [[ -n "$brew" ]]; then
-        echo -e "${BLUE}> Homebrew formulae & casks${NC}"
-        if ! "$brew" update; then
-            echo -e "${YELLOW}Warning: 'brew update' reported problems.${NC}"
-        fi
-        # No --greedy: casks that ship their own auto-updater keep managing
-        # themselves rather than being reinstalled behind their own back.
-        if ! "$brew" upgrade; then
-            echo -e "${YELLOW}Warning: 'brew upgrade' reported problems.${NC}"
+    local failed=0 pm bin
+    for pm in $GLOBAL_PM_ORDER; do
+        bin="$(${pm}_bin)"
+        [[ -n "$bin" ]] || continue
+        echo -e "${BLUE}> ${pm}${NC}"
+        if ! pm_upgrade_"$pm" "$bin"; then
+            echo -e "${YELLOW}Warning: ${pm} update reported problems.${NC}"
             failed=1
         fi
-    fi
-
-    local uv
-    uv=$(uv_bin)
-    if [[ -n "$uv" ]]; then
-        # uv exposes no "outdated" query, so the upgrade is simply always
-        # attempted: it prints "Nothing to upgrade" and exits 0 when current.
-        echo -e "${BLUE}> uv tools${NC}"
-        if ! "$uv" tool upgrade --all; then
-            echo -e "${YELLOW}Warning: 'uv tool upgrade --all' reported problems.${NC}"
-            failed=1
-        fi
-    fi
-
-    local bun
-    bun=$(bun_bin)
-    if [[ -n "$bun" ]]; then
-        echo -e "${BLUE}> Bun global packages${NC}"
-        # Older Bun releases have no global update; ask the binary itself rather
-        # than assuming, so the step degrades to a note instead of an error.
-        if "$bun" update --help 2>&1 | grep -q -- '--global'; then
-            if ! "$bun" update --global; then
-                echo -e "${YELLOW}Warning: 'bun update --global' reported problems.${NC}"
-                failed=1
-            fi
-        else
-            echo "This Bun version has no global update command. Skipping."
-        fi
-    fi
+    done
+    # Reclaim the caches the upgrades just filled. This is maintenance, not part
+    # of the update result: cleanup problems only warn and never flip $failed,
+    # so they can't force the post-batch "Press Enter" pause.
+    echo -e "${BLUE}Cleaning package caches...${NC}"
+    for pm in $GLOBAL_PM_ORDER; do
+        bin="$(${pm}_bin)"
+        [[ -n "$bin" ]] || continue
+        declare -f pm_cleanup_"$pm" >/dev/null 2>&1 || continue
+        echo -e "${BLUE}> ${pm}${NC}"
+        pm_cleanup_"$pm" "$bin" || echo -e "${YELLOW}Warning: ${pm} cache cleanup reported problems.${NC}"
+    done
 
     if [ "$failed" -eq 1 ]; then
         echo -e "${YELLOW}Some global packages could not be updated - see the messages above.${NC}"
         return 1
     fi
-    echo -e "${GREEN}✓ Global packages are up to date!${NC}"
+    echo -e "${GREEN}✓ Global packages updated and caches cleaned!${NC}"
 }
-
 # Selection states (0 = unselected, 1 = selected)
 SEL_1=0; SEL_2=0; SEL_3=0; SEL_4=0; SEL_5=0; SEL_6=0; SEL_7=0; SEL_8=0; SEL_9=0; SEL_10=0; SEL_11=0; SEL_12=0; SEL_13=0; SEL_14=0; SEL_15=0; SEL_16=0; SEL_17=0; SEL_18=0; SEL_19=0
 CURSOR=1
@@ -1776,7 +2042,7 @@ while true; do
             echo -e "${BLUE}==================================================${NC}\033[K"
             echo -e "${BLUE}        🛠️  setup-zsh Developer Tool Installer${NC}\033[K"
             echo -e "${BLUE}==================================================${NC}\033[K"
-            echo -e "Use Up/Down/Left/Right arrows to navigate, Space/Enter to toggle.\033[K"
+            echo -e "Arrows navigate · Space toggles · Enter toggles (Enter on 📦 Global Packages shows details).\033[K"
             echo ""
             echo -e "${PURPLE}── Languages & Runtimes ─────────────────────────${NC}\033[K"
             show_line 1 "$(show_checkbox "$SEL_1")  1) 🥟 Bun                $(format_status "$INST_BUN" "$LATEST_BUN")"
@@ -1916,7 +2182,11 @@ while true; do
                 fi
                 ;;
             SPACE|ENTER)
-                if [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 19 ]; then
+                if [ "$CURSOR" -eq 19 ] && [ "$action" = "ENTER" ]; then
+                    # Enter on Global Packages = view the per-manager breakdown.
+                    # Space or the number key still toggle the row for install.
+                    show_globals_details
+                elif [ "$CURSOR" -ge 1 ] && [ "$CURSOR" -le 19 ]; then
                     eval "SEL_$CURSOR=\$((1 - SEL_$CURSOR))"
                 elif [ "$CURSOR" -eq 20 ]; then
                     do_install=1
