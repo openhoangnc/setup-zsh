@@ -277,7 +277,14 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 ) &
 
 (
-    LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/formula/uv.json | grep -o '"stable":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
+    # install_uv downloads the GitHub release tagged $LATEST_UV, so read the tag
+    # list itself rather than the brew formula — sourcing "latest" from a
+    # different place than we download from can only ever disagree. The tags are
+    # bare versions (0.12.10), exactly the string the download URL needs.
+    LATEST=$(curl -s --max-time 10 https://github.com/astral-sh/uv/releases.atom | grep -o 'releases/tag/[0-9][^"<]*' | head -n 1 | sed 's#releases/tag/##')
+    if [ -z "$LATEST" ]; then
+        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/formula/uv.json | grep -o '"stable":"[^"]*"' | head -n 1 | cut -d'"' -f4)
+    fi
     echo "$LATEST" > "$TEMP_VER_DIR/uv"
 ) &
 
@@ -301,21 +308,50 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 ) &
 
 (
-    LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/mongodb-compass.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
+    # MongoDB's own download centre, not the cask: install_compass builds a
+    # downloads.mongodb.com URL from this value, so it should be MongoDB's
+    # newest build rather than whatever brew last bumped to. The feed also lists
+    # Beta and the Readonly/Isolated editions, so match only bare "X.Y.Z (Stable)"
+    # and take the highest — the feed's order is not contractual.
+    LATEST=$(curl -s --max-time 10 https://info-mongodb-com.s3.amazonaws.com/com-download-center/compass.json | grep -o '"version":"[0-9][0-9.]* (Stable)"' | cut -d'"' -f4 | cut -d' ' -f1 | sort -V | tail -n 1)
+    if [ -z "$LATEST" ]; then
+        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/mongodb-compass.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4)
+    fi
     echo "$LATEST" > "$TEMP_VER_DIR/compass"
 ) &
 
 (
-    LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/dbeaver-community.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
+    # install_dbeaver builds a dbeaver.io/files/<version>/ URL, and DBeaver's
+    # release tags are bare versions (26.2.0) — the same string. Read the tags so
+    # a lagging cask can't hide a release that dbeaver.io is already serving.
+    LATEST=$(curl -s --max-time 10 https://github.com/dbeaver/dbeaver/releases.atom | grep -o 'releases/tag/[0-9][^"<]*' | head -n 1 | sed 's#releases/tag/##')
+    if [ -z "$LATEST" ]; then
+        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/dbeaver-community.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4)
+    fi
     echo "$LATEST" > "$TEMP_VER_DIR/dbeaver"
 ) &
 
 (
-    LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/google-chrome.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
+    # install_chrome downloads the unversioned googlechrome.dmg, which always
+    # serves whatever Google is shipping right now — so ask Google, not the cask
+    # (same reasoning as Bun: the cask is bot-updated after the fact, and the
+    # display would flip to "newer than latest" for the gap).
+    # Note the filter: the plain .../versions endpoint also lists builds that are
+    # merely staged for stable (it was offering 153.0.8010.12 while stable served
+    # 152.0.7977.83), which would report a phantom upgrade. Only releases with no
+    # end time are actually being served; stable rolls out in slices, so several
+    # are live at once and the newest is what the dmg gives you.
+    LATEST=$(curl -s --max-time 10 'https://versionhistory.googleapis.com/v1/chrome/platforms/mac/channels/stable/versions/all/releases?filter=endtime%3Dnone' | grep -o '"version": *"[0-9][0-9.]*"' | cut -d'"' -f4 | sort -V | tail -n 1)
+    if [ -z "$LATEST" ]; then
+        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/google-chrome.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4)
+    fi
     echo "$LATEST" > "$TEMP_VER_DIR/chrome"
 ) &
 
 (
+    # Kept on the cask deliberately: install_android_studio downloads the URL out
+    # of this same cask JSON, so the cask *is* the install source here — pointing
+    # the probe at Google's own feed would report a version we don't install.
     # The cask exposes Google's full marketing version (e.g. "2026.1.1.10,quail1-patch2"),
     # but the installed app's Info.plist only reports its feature-release version
     # (CFBundleShortVersionString, e.g. "2026.1"). Truncate to the feature release
@@ -327,25 +363,47 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 ) &
 
 (
+    # Cask on purpose: install_codex downloads the URL from this same cask JSON,
+    # so probing upstream would advertise a version we would not install.
     LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/codex-app.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
     echo "$LATEST" > "$TEMP_VER_DIR/codex"
 ) &
 
 (
+    # Cask on purpose: install_antigravity downloads the URL from this same cask
+    # JSON, so probing upstream would advertise a version we would not install.
     LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/antigravity.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4 | cut -d',' -f1 || echo "Unknown")
     echo "$LATEST" > "$TEMP_VER_DIR/antigravity"
 ) &
 
 (
-    # The gcloud CLI has no plain "latest version" endpoint, so read the cask
-    # metadata — its version (e.g. 577.0.0) matches both `gcloud --version` and
-    # the versioned tarball name we download.
-    LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/gcloud-cli.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
+    # The component manifest for the rapid channel carries the CLI release at its
+    # top level ("version": "583.0.0") — the same number `gcloud --version`
+    # prints and the same one install_gcloud puts in the tarball name. It is the
+    # manifest `gcloud components update` itself reads, so it is the authority
+    # the cask is merely copying. The quoted-numeric pattern occurs exactly once
+    # in the file (schema_version's "version" is an unquoted 3), and the ~240KB
+    # download is fine next to the other probes. Cask as fallback.
+    LATEST=$(curl -s --max-time 10 https://dl.google.com/dl/cloudsdk/channels/rapid/components-2.json | grep -o '"version": "[0-9][0-9.]*"' | head -n 1 | cut -d'"' -f4)
+    if [ -z "$LATEST" ]; then
+        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/gcloud-cli.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4)
+    fi
     echo "$LATEST" > "$TEMP_VER_DIR/gcloud"
 ) &
 
 (
-    LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/formula/bun.json | grep -o '"stable":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
+    # Read Bun's own releases, not formulae.brew.sh: the brew formula builds bun
+    # from source and routinely trails upstream by days (it sat on 1.4.0 while
+    # bun.sh was already shipping 1.4.2). install_bun runs bun.sh/install, which
+    # always fetches upstream latest, so a brew-derived "latest" can never match
+    # what we just installed. Use the releases.atom feed rather than
+    # api.github.com, which rate-limits unauthenticated callers to 60/hour.
+    # The feed also carries non-release tags (consolidation-step-*), hence the
+    # bun-v<digit> filter instead of taking the first entry.
+    LATEST=$(curl -s --max-time 10 https://github.com/oven-sh/bun/releases.atom | grep -o 'releases/tag/bun-v[0-9][^"<]*' | head -n 1 | sed 's#releases/tag/bun-v##')
+    if [ -z "$LATEST" ]; then
+        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/formula/bun.json | grep -o '"stable":"[^"]*"' | head -n 1 | cut -d'"' -f4)
+    fi
     echo "$LATEST" > "$TEMP_VER_DIR/bun"
 ) &
 
