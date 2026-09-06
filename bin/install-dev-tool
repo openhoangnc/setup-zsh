@@ -579,8 +579,14 @@ format_status() {
         echo -e "${GREEN}[Installed: v$installed]${NC} ${YELLOW}(update check failed)${NC}"
     elif [[ "$installed" == "$latest" ]]; then
         echo -e "${GREEN}[Installed: v$installed (Latest)]${NC}"
-    else
+    elif is_outdated "$installed" "$latest"; then
         echo -e "${YELLOW}[Installed: v$installed -> Upgrade to v$latest]${NC}"
+    else
+        # Installed is ahead of the version we probed (e.g. a prerelease, or the
+        # upstream release landed before the Homebrew/API feed caught up). Never
+        # render that as an upgrade — is_outdated would refuse the "upgrade"
+        # anyway, and "-> Upgrade to v1.4.0" from v1.4.2 reads as a bug.
+        echo -e "${GREEN}[Installed: v$installed (newer than latest v$latest)]${NC}"
     fi
 }
 
@@ -596,14 +602,18 @@ format_python_status() {
     fi
 
     # Build a per-component fragment: "(Latest)" when current, "-> vX" when an
-    # upgrade is available, bare version when the latest couldn't be determined.
+    # upgrade is available, "(> vX)" when the install is ahead of the version we
+    # probed, bare version when the latest couldn't be determined. The ahead case
+    # is not "(Latest)" — the numbers on screen would contradict the label.
     local py_frag uv_frag
     if [[ -z "$py_inst" ]]; then
         py_frag="Python3 missing"
     elif [[ -z "$py_latest" || "$py_latest" == "Unknown" ]]; then
         py_frag="Py v$py_inst"
-    elif ! is_outdated "$py_inst" "$py_latest"; then
+    elif [[ "$py_inst" == "$py_latest" ]]; then
         py_frag="Py v$py_inst (Latest)"
+    elif ! is_outdated "$py_inst" "$py_latest"; then
+        py_frag="Py v$py_inst (> v$py_latest)"
     else
         py_frag="Py v$py_inst -> v$py_latest"
     fi
@@ -611,8 +621,10 @@ format_python_status() {
         uv_frag="uv missing"
     elif [[ -z "$uv_latest" || "$uv_latest" == "Unknown" ]]; then
         uv_frag="uv v$uv_inst"
-    elif ! is_outdated "$uv_inst" "$uv_latest"; then
+    elif [[ "$uv_inst" == "$uv_latest" ]]; then
         uv_frag="uv v$uv_inst (Latest)"
+    elif ! is_outdated "$uv_inst" "$uv_latest"; then
+        uv_frag="uv v$uv_inst (> v$uv_latest)"
     else
         uv_frag="uv v$uv_inst -> v$uv_latest"
     fi
@@ -732,6 +744,15 @@ is_outdated() {
     [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" = "$1" ]
 }
 
+is_up_to_date() {
+    # is_up_to_date <installed> <latest> — true when the tool is installed, the
+    # latest version is known, and it is not outdated. Deliberately the inverse of
+    # is_outdated *plus* those two preconditions: a missing install or a failed
+    # version probe is not "up to date", and an install ahead of latest is.
+    [ -n "$1" ] && [ -n "$2" ] && [ "$2" != "Unknown" ] || return 1
+    ! is_outdated "$1" "$2"
+}
+
 require_latest() {
     local name="$1" ver="$2"
     if [[ -z "$ver" || "$ver" == "Unknown" ]]; then
@@ -742,9 +763,18 @@ require_latest() {
 }
 
 confirm_reinstall() {
+    # confirm_reinstall <name> <installed> [latest] — asked before re-installing a
+    # tool that is_outdated says needs nothing. With <latest> given and behind the
+    # installed version, the "re-install" would actually put an older build on
+    # disk (installers always fetch $LATEST_*), so ask for a downgrade explicitly.
     local name="$1"
     local version="$2"
-    echo -n -e "${YELLOW}${name} is already up-to-date (v${version}). Re-install? (y/N): ${NC}"
+    local latest="$3"
+    if [[ -n "$latest" && "$latest" != "Unknown" && "$latest" != "$version" ]]; then
+        echo -n -e "${YELLOW}${name} v${version} is newer than the latest release we found (v${latest}). Re-install and downgrade? (y/N): ${NC}"
+    else
+        echo -n -e "${YELLOW}${name} is already up-to-date (v${version}). Re-install? (y/N): ${NC}"
+    fi
     read -r response
     if [[ "$response" =~ ^[Yy]$ ]]; then
         return 0
@@ -2251,55 +2281,55 @@ while true; do
         echo -e "\n${BLUE}Preparing installation...${NC}\n"
         
         # Check confirm_reinstall upfront for tools that are already up-to-date
-        if [ "$SEL_1" -eq 1 ] && [[ "$INST_BUN" == "$LATEST_BUN" ]] && ! confirm_reinstall "Bun" "$LATEST_BUN"; then
+        if [ "$SEL_1" -eq 1 ] && is_up_to_date "$INST_BUN" "$LATEST_BUN" && ! confirm_reinstall "Bun" "$INST_BUN" "$LATEST_BUN"; then
             SEL_1=0
         fi
-        if [ "$SEL_2" -eq 1 ] && [[ "$INST_GO" == "$LATEST_GO" ]] && ! confirm_reinstall "Go" "$LATEST_GO"; then
+        if [ "$SEL_2" -eq 1 ] && is_up_to_date "$INST_GO" "$LATEST_GO" && ! confirm_reinstall "Go" "$INST_GO" "$LATEST_GO"; then
             SEL_2=0
         fi
-        if [ "$SEL_3" -eq 1 ] && [[ "$INST_JDK" == "$LATEST_JDK" ]] && ! confirm_reinstall "Eclipse Temurin JDK LTS" "$LATEST_JDK"; then
+        if [ "$SEL_3" -eq 1 ] && is_up_to_date "$INST_JDK" "$LATEST_JDK" && ! confirm_reinstall "Eclipse Temurin JDK LTS" "$INST_JDK" "$LATEST_JDK"; then
             SEL_3=0
         fi
-        if [ "$SEL_4" -eq 1 ] && [[ "$INST_NODE" == "$LATEST_NODE" ]] && ! confirm_reinstall "Node.js" "$LATEST_NODE"; then
+        if [ "$SEL_4" -eq 1 ] && is_up_to_date "$INST_NODE" "$LATEST_NODE" && ! confirm_reinstall "Node.js" "$INST_NODE" "$LATEST_NODE"; then
             SEL_4=0
         fi
-        if [ "$SEL_5" -eq 1 ] && [[ -n "$INST_PYTHON" && -n "$INST_UV" ]] && ! python_outdated && ! confirm_reinstall "Python & uv" "$LATEST_PYTHON"; then
+        if [ "$SEL_5" -eq 1 ] && [[ -n "$INST_PYTHON" && -n "$INST_UV" ]] && ! python_outdated && ! confirm_reinstall "Python & uv" "$INST_PYTHON"; then
             SEL_5=0
         fi
-        if [ "$SEL_6" -eq 1 ] && [[ "$INST_RUST" == "$LATEST_RUST" ]] && ! confirm_reinstall "Rust" "$LATEST_RUST"; then
+        if [ "$SEL_6" -eq 1 ] && is_up_to_date "$INST_RUST" "$LATEST_RUST" && ! confirm_reinstall "Rust" "$INST_RUST" "$LATEST_RUST"; then
             SEL_6=0
         fi
-        if [ "$SEL_7" -eq 1 ] && [[ "$INST_GCLOUD" == "$LATEST_GCLOUD" ]] && ! confirm_reinstall "gcloud CLI" "$LATEST_GCLOUD"; then
+        if [ "$SEL_7" -eq 1 ] && is_up_to_date "$INST_GCLOUD" "$LATEST_GCLOUD" && ! confirm_reinstall "gcloud CLI" "$INST_GCLOUD" "$LATEST_GCLOUD"; then
             SEL_7=0
         fi
-        if [ "$SEL_9" -eq 1 ] && [[ "$INST_HOMEBREW" == "$LATEST_HOMEBREW" ]] && ! confirm_reinstall "Homebrew" "$LATEST_HOMEBREW"; then
+        if [ "$SEL_9" -eq 1 ] && is_up_to_date "$INST_HOMEBREW" "$LATEST_HOMEBREW" && ! confirm_reinstall "Homebrew" "$INST_HOMEBREW" "$LATEST_HOMEBREW"; then
             SEL_9=0
         fi
-        if [ "$SEL_10" -eq 1 ] && [[ "$INST_ORB" == "$LATEST_ORB" ]] && ! confirm_reinstall "OrbStack" "$LATEST_ORB"; then
+        if [ "$SEL_10" -eq 1 ] && is_up_to_date "$INST_ORB" "$LATEST_ORB" && ! confirm_reinstall "OrbStack" "$INST_ORB" "$LATEST_ORB"; then
             SEL_10=0
         fi
-        if [ "$SEL_11" -eq 1 ] && [[ "$INST_ANDROID_STUDIO" == "$LATEST_ANDROID_STUDIO" ]] && ! confirm_reinstall "Android Studio" "$LATEST_ANDROID_STUDIO"; then
+        if [ "$SEL_11" -eq 1 ] && is_up_to_date "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO" && ! confirm_reinstall "Android Studio" "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO"; then
             SEL_11=0
         fi
-        if [ "$SEL_12" -eq 1 ] && [[ "$INST_VSCODE" == "$LATEST_VSCODE" ]] && ! confirm_reinstall "VSCode" "$LATEST_VSCODE"; then
+        if [ "$SEL_12" -eq 1 ] && is_up_to_date "$INST_VSCODE" "$LATEST_VSCODE" && ! confirm_reinstall "VSCode" "$INST_VSCODE" "$LATEST_VSCODE"; then
             SEL_12=0
         fi
-        if [ "$SEL_13" -eq 1 ] && [[ "$INST_DBEAVER" == "$LATEST_DBEAVER" ]] && ! confirm_reinstall "DBeaver Community Edition" "$LATEST_DBEAVER"; then
+        if [ "$SEL_13" -eq 1 ] && is_up_to_date "$INST_DBEAVER" "$LATEST_DBEAVER" && ! confirm_reinstall "DBeaver Community Edition" "$INST_DBEAVER" "$LATEST_DBEAVER"; then
             SEL_13=0
         fi
-        if [ "$SEL_14" -eq 1 ] && [[ "$INST_COMPASS" == "$LATEST_COMPASS" ]] && ! confirm_reinstall "MongoDB Compass" "$LATEST_COMPASS"; then
+        if [ "$SEL_14" -eq 1 ] && is_up_to_date "$INST_COMPASS" "$LATEST_COMPASS" && ! confirm_reinstall "MongoDB Compass" "$INST_COMPASS" "$LATEST_COMPASS"; then
             SEL_14=0
         fi
-        if [ "$SEL_15" -eq 1 ] && [[ "$INST_ANTIGRAVITY" == "$LATEST_ANTIGRAVITY" ]] && ! confirm_reinstall "Antigravity" "$LATEST_ANTIGRAVITY"; then
+        if [ "$SEL_15" -eq 1 ] && is_up_to_date "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY" && ! confirm_reinstall "Antigravity" "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY"; then
             SEL_15=0
         fi
-        if [ "$SEL_16" -eq 1 ] && [[ "$INST_CLAUDE" == "$LATEST_CLAUDE" ]] && ! confirm_reinstall "Claude" "$LATEST_CLAUDE"; then
+        if [ "$SEL_16" -eq 1 ] && is_up_to_date "$INST_CLAUDE" "$LATEST_CLAUDE" && ! confirm_reinstall "Claude" "$INST_CLAUDE" "$LATEST_CLAUDE"; then
             SEL_16=0
         fi
-        if [ "$SEL_17" -eq 1 ] && [[ "$INST_CODEX" == "$LATEST_CODEX" ]] && ! confirm_reinstall "Codex" "$LATEST_CODEX"; then
+        if [ "$SEL_17" -eq 1 ] && is_up_to_date "$INST_CODEX" "$LATEST_CODEX" && ! confirm_reinstall "Codex" "$INST_CODEX" "$LATEST_CODEX"; then
             SEL_17=0
         fi
-        if [ "$SEL_18" -eq 1 ] && [[ "$INST_CHROME" == "$LATEST_CHROME" ]] && ! confirm_reinstall "Google Chrome" "$LATEST_CHROME"; then
+        if [ "$SEL_18" -eq 1 ] && is_up_to_date "$INST_CHROME" "$LATEST_CHROME" && ! confirm_reinstall "Google Chrome" "$INST_CHROME" "$LATEST_CHROME"; then
             SEL_18=0
         fi
         if [ "$SEL_19" -eq 1 ]; then
