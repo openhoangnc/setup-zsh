@@ -339,9 +339,17 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     # Note the filter: the plain .../versions endpoint also lists builds that are
     # merely staged for stable (it was offering 153.0.8010.12 while stable served
     # 152.0.7977.83), which would report a phantom upgrade. Only releases with no
-    # end time are actually being served; stable rolls out in slices, so several
-    # are live at once and the newest is what the dmg gives you.
-    LATEST=$(curl -s --max-time 10 'https://versionhistory.googleapis.com/v1/chrome/platforms/mac/channels/stable/versions/all/releases?filter=endtime%3Dnone' | grep -o '"version": *"[0-9][0-9.]*"' | cut -d'"' -f4 | sort -V | tail -n 1)
+    # end time are actually being served — but that still isn't enough: stable
+    # rolls out in slices, and the newest live release can be an early-stable
+    # experiment served to 0.5% of clients (155.0.8059.12 at "fraction": 0.005
+    # while the dmg gave 154.0.8037.93 at "fraction": 1). Reinstalling could never
+    # reach it, so the row stayed "Upgrade" forever. Take the release with the
+    # largest rollout fraction (newest wins a tie) — that is what the dmg serves.
+    # "fraction" precedes "version" inside each release object; a release with
+    # no fraction counts as 0 so it only wins when none carry one.
+    LATEST=$(curl -s --max-time 10 'https://versionhistory.googleapis.com/v1/chrome/platforms/mac/channels/stable/versions/all/releases?filter=endtime%3Dnone' \
+        | awk -F'"' '/"fraction":/ { f = $3; gsub(/[^0-9.eE-]/, "", f) } /"version":/ { print (f == "" ? 0 : f), $4; f = "" }' \
+        | grep -E '^[0-9.eE-]+ [0-9][0-9.]*$' | sort -k1,1gr -k2,2Vr | head -n 1 | cut -d' ' -f2)
     if [ -z "$LATEST" ]; then
         LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/google-chrome.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4)
     fi
