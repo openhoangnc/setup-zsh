@@ -95,6 +95,13 @@ One ~2000-line bash script with a fixed pipeline:
    `eval` (bash 3.2 has no associative arrays), plus a `CURSOR` that indexes tool rows
    first and the bottom action row after them.
 
+**Versions and downloads come straight from each vendor**, never from Homebrew's API
+(`formulae.brew.sh`): the vendor's own update feed or download page (Sparkle appcast,
+electron-updater manifest, release JSON), or the vendor's GitHub releases where that is
+how it ships (DBX, Bun, uv, Temurin). When the download URL can't be rebuilt from the
+version (codenames, build ids), the probe writes it to `$TEMP_VER_DIR/<tool>_url` and the
+installer uses that, so the version shown and the build installed can never disagree.
+
 `is_outdated` is the single comparison rule: an install *newer* than the reported latest is
 never treated as outdated, so the tool never suggests a downgrade.
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # setup-zsh Developer Tool Installer
-# Installs and updates Bun, Go, Homebrew, JDK (Eclipse Temurin LTS), Node.js, Python & uv, Rust, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBX, MongoDB Compass, Antigravity, Claude, and Google Chrome on macOS.
+# Installs and updates Bun, Go, Homebrew, JDK (Eclipse Temurin LTS), Node.js, Python & uv, Rust, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBX, MongoDB Compass, Antigravity, ChatGPT, Claude, and Google Chrome on macOS.
 # Also updates the packages installed *through* those tools: global packages of npm, pnpm, Yarn (classic), Bun, Homebrew, uv, pipx, RubyGems, Composer, and cargo (via cargo-install-update).
 
 # ANSI color codes
@@ -283,7 +283,7 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     # bare versions (0.12.10), exactly the string the download URL needs.
     LATEST=$(curl -s --max-time 10 https://github.com/astral-sh/uv/releases.atom | grep -o 'releases/tag/[0-9][^"<]*' | head -n 1 | sed 's#releases/tag/##')
     if [ -z "$LATEST" ]; then
-        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/formula/uv.json | grep -o '"stable":"[^"]*"' | head -n 1 | cut -d'"' -f4)
+        LATEST=$(curl -s --max-time 10 https://api.github.com/repos/astral-sh/uv/releases/latest | grep -o '"tag_name": "[^"]*"' | head -n 1 | cut -d'"' -f4)
     fi
     echo "$LATEST" > "$TEMP_VER_DIR/uv"
 ) &
@@ -314,9 +314,6 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     # Beta and the Readonly/Isolated editions, so match only bare "X.Y.Z (Stable)"
     # and take the highest — the feed's order is not contractual.
     LATEST=$(curl -s --max-time 10 https://info-mongodb-com.s3.amazonaws.com/com-download-center/compass.json | grep -o '"version":"[0-9][0-9.]* (Stable)"' | cut -d'"' -f4 | cut -d' ' -f1 | sort -V | tail -n 1)
-    if [ -z "$LATEST" ]; then
-        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/mongodb-compass.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4)
-    fi
     echo "$LATEST" > "$TEMP_VER_DIR/compass"
 ) &
 
@@ -353,37 +350,64 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     LATEST=$(curl -s --max-time 10 'https://versionhistory.googleapis.com/v1/chrome/platforms/mac/channels/stable/versions/all/releases?filter=endtime%3Dnone' \
         | awk -F'"' '/"fraction":/ { f = $3; gsub(/[^0-9.eE-]/, "", f) } /"version":/ { print (f == "" ? 0 : f), $4; f = "" }' \
         | grep -E '^[0-9.eE-]+ [0-9][0-9.]*$' | sort -k1,1gr -k2,2Vr | head -n 1 | cut -d' ' -f2)
-    if [ -z "$LATEST" ]; then
-        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/google-chrome.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4)
-    fi
     echo "$LATEST" > "$TEMP_VER_DIR/chrome"
 ) &
 
 (
-    # Kept on the cask deliberately: install_android_studio downloads the URL out
-    # of this same cask JSON, so the cask *is* the install source here — pointing
-    # the probe at Google's own feed would report a version we don't install.
-    # The cask exposes Google's full marketing version (e.g. "2026.1.1.10,quail1-patch2"),
-    # but the installed app's Info.plist only reports its feature-release version
+    # Google's own download page links the current stable DMG for each arch
+    # (…/install/2026.2.1.8/android-studio-rabbit1-mac_arm.dmg). The file name
+    # carries a release codename that can't be derived from the version, so the
+    # probe hands the whole URL to install_android_studio — version and download
+    # then come from the same link and can never disagree. Intel is "-mac.dmg".
+    # The URL carries the full marketing version (2026.2.1.8), but the installed
+    # app's Info.plist only reports its feature-release version
     # (CFBundleShortVersionString, e.g. "2026.1"). Truncate to the feature release
     # (YYYY.N) so the two are comparable — otherwise every check falsely reports an
     # upgrade. Patch updates within a feature release are handled by Android Studio's
     # own auto-updater.
-    LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/android-studio.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4 | cut -d',' -f1 | cut -d'.' -f1,2 || echo "Unknown")
+    as_suffix="mac_arm"
+    [ "$ARCH" = "x86_64" ] && as_suffix="mac"
+    URL=$(curl -s --max-time 15 https://developer.android.com/studio | grep -oE "https://[^\"' ]*/android/studio/install/[0-9.]+/android-studio-[a-z0-9-]+-${as_suffix}\.dmg" | head -n 1)
+    LATEST=$(echo "$URL" | sed -n 's#.*/install/\([0-9]*\.[0-9]*\)\..*#\1#p')
+    echo "$URL" > "$TEMP_VER_DIR/android_studio_url"
     echo "$LATEST" > "$TEMP_VER_DIR/android_studio"
 ) &
 
 (
-    # Cask on purpose: install_codex downloads the URL from this same cask JSON,
-    # so probing upstream would advertise a version we would not install.
-    LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/codex-app.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4 || echo "Unknown")
-    echo "$LATEST" > "$TEMP_VER_DIR/codex"
+    # The Sparkle appcast the app's own updater polls. OpenAI folded the Codex
+    # app into ChatGPT, so this feed — still under codex-app-prod/ — now ships
+    # ChatGPT.app (ChatGPT-darwin-arm64-<ver>.zip); the Homebrew cask stayed on
+    # the last Codex.app build for months. Each <item> carries the
+    # shortVersionString (CFBundleShortVersionString) and one full .zip
+    # enclosure; the <sparkle:deltas> under it are .delta files, hence the .zip
+    # filter. Items are per-arch (arm64 only today: there is no Intel build), so
+    # match the arch in the file name, then take the highest version rather
+    # than trusting feed order. The URL goes to install_chatgpt as-is.
+    cg_arch="arm64"
+    [ "$ARCH" = "x86_64" ] && cg_arch="x64"
+    PICK=$(curl -s --max-time 10 https://persistent.oaistatic.com/codex-app-prod/appcast.xml | awk -v arch="$cg_arch" '
+        /<item>/ { v = ""; u = "" }
+        /<sparkle:shortVersionString>/ { v = $0; sub(/.*<sparkle:shortVersionString>/, "", v); sub(/<.*/, "", v) }
+        /<enclosure url="[^"]*\.zip"/ && u == "" { u = $0; sub(/.*<enclosure url="/, "", u); sub(/".*/, "", u) }
+        /<\/item>/ { if (v != "" && u ~ ("-darwin-" arch "-")) print v, u }' | sort -k1,1V | tail -n 1)
+    LATEST=$(echo "$PICK" | cut -d' ' -f1)
+    echo "$PICK" | cut -s -d' ' -f2 > "$TEMP_VER_DIR/chatgpt_url"
+    echo "$LATEST" > "$TEMP_VER_DIR/chatgpt"
 ) &
 
 (
-    # Cask on purpose: install_antigravity downloads the URL from this same cask
-    # JSON, so probing upstream would advertise a version we would not install.
-    LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/antigravity.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4 | cut -d',' -f1 || echo "Unknown")
+    # The manifest Antigravity's own electron-updater reads (the base URL is in
+    # the app's Contents/Resources/app-update.yml). It sets the channel to
+    # latest-<process.arch>, so the file is latest-arm64-mac.yml / latest-x64-mac.yml
+    # — plain latest-mac.yml 404s. Its "version:" is CFBundleShortVersionString and
+    # its single "url:" is the build to install; the download path also carries a
+    # build id (2.23.0-5238607586394112/) that the version alone can't rebuild, so
+    # the URL is handed to install_antigravity as-is.
+    ag_arch="arm64"
+    [ "$ARCH" = "x86_64" ] && ag_arch="x64"
+    MANIFEST=$(curl -s --max-time 10 "https://antigravity-hub-auto-updater-974169037036.us-central1.run.app/manifest/latest-${ag_arch}-mac.yml")
+    LATEST=$(echo "$MANIFEST" | sed -n 's/^version: *//p' | head -n 1)
+    echo "$MANIFEST" | sed -n 's/^ *- url: *//p' | head -n 1 > "$TEMP_VER_DIR/antigravity_url"
     echo "$LATEST" > "$TEMP_VER_DIR/antigravity"
 ) &
 
@@ -394,11 +418,8 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     # manifest `gcloud components update` itself reads, so it is the authority
     # the cask is merely copying. The quoted-numeric pattern occurs exactly once
     # in the file (schema_version's "version" is an unquoted 3), and the ~240KB
-    # download is fine next to the other probes. Cask as fallback.
+    # download is fine next to the other probes.
     LATEST=$(curl -s --max-time 10 https://dl.google.com/dl/cloudsdk/channels/rapid/components-2.json | grep -o '"version": "[0-9][0-9.]*"' | head -n 1 | cut -d'"' -f4)
-    if [ -z "$LATEST" ]; then
-        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/gcloud-cli.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4)
-    fi
     echo "$LATEST" > "$TEMP_VER_DIR/gcloud"
 ) &
 
@@ -413,7 +434,7 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     # bun-v<digit> filter instead of taking the first entry.
     LATEST=$(curl -s --max-time 10 https://github.com/oven-sh/bun/releases.atom | grep -o 'releases/tag/bun-v[0-9][^"<]*' | head -n 1 | sed 's#releases/tag/bun-v##')
     if [ -z "$LATEST" ]; then
-        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/formula/bun.json | grep -o '"stable":"[^"]*"' | head -n 1 | cut -d'"' -f4)
+        LATEST=$(curl -s --max-time 10 https://api.github.com/repos/oven-sh/bun/releases/latest | grep -o '"tag_name": "bun-v[^"]*"' | head -n 1 | cut -d'"' -f4 | sed 's/^bun-v//')
     fi
     echo "$LATEST" > "$TEMP_VER_DIR/bun"
 ) &
@@ -469,8 +490,11 @@ LATEST_COMPASS=$(cat "$TEMP_VER_DIR/compass" 2>/dev/null || echo "Unknown")
 LATEST_DBX=$(cat "$TEMP_VER_DIR/dbx" 2>/dev/null || echo "Unknown")
 LATEST_CHROME=$(cat "$TEMP_VER_DIR/chrome" 2>/dev/null || echo "Unknown")
 LATEST_ANDROID_STUDIO=$(cat "$TEMP_VER_DIR/android_studio" 2>/dev/null || echo "Unknown")
-LATEST_CODEX=$(cat "$TEMP_VER_DIR/codex" 2>/dev/null || echo "Unknown")
+ANDROID_STUDIO_URL=$(cat "$TEMP_VER_DIR/android_studio_url" 2>/dev/null)
+LATEST_CHATGPT=$(cat "$TEMP_VER_DIR/chatgpt" 2>/dev/null || echo "Unknown")
+CHATGPT_URL=$(cat "$TEMP_VER_DIR/chatgpt_url" 2>/dev/null)
 LATEST_ANTIGRAVITY=$(cat "$TEMP_VER_DIR/antigravity" 2>/dev/null || echo "Unknown")
+ANTIGRAVITY_URL=$(cat "$TEMP_VER_DIR/antigravity_url" 2>/dev/null)
 LATEST_GCLOUD=$(cat "$TEMP_VER_DIR/gcloud" 2>/dev/null || echo "Unknown")
 LATEST_HOMEBREW=$(cat "$TEMP_VER_DIR/homebrew" 2>/dev/null || echo "Unknown")
 read_global_checks "$TEMP_VER_DIR"
@@ -480,7 +504,7 @@ rm -rf "$TEMP_VER_DIR"
 # network or an API fails — normalize so empty versions never look like upgrades
 for v in LATEST_BUN LATEST_GO LATEST_NODE LATEST_ORB LATEST_VSCODE LATEST_PYTHON \
          LATEST_UV LATEST_JDK LATEST_CLAUDE LATEST_RUST LATEST_COMPASS LATEST_DBX \
-         LATEST_CHROME LATEST_ANDROID_STUDIO LATEST_CODEX LATEST_ANTIGRAVITY LATEST_GCLOUD \
+         LATEST_CHROME LATEST_ANDROID_STUDIO LATEST_CHATGPT LATEST_ANTIGRAVITY LATEST_GCLOUD \
          LATEST_HOMEBREW; do
     if [ -z "$(eval echo "\$$v")" ]; then
         eval "$v=Unknown"
@@ -599,9 +623,9 @@ detect_android_studio() {
     fi
 }
 
-detect_codex() {
-    if [[ -d "/Applications/Codex.app" ]]; then
-        defaults read "/Applications/Codex.app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo ""
+detect_chatgpt() {
+    if [[ -d "/Applications/ChatGPT.app" ]]; then
+        defaults read "/Applications/ChatGPT.app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo ""
     fi
 }
 
@@ -1547,12 +1571,10 @@ install_chrome() {
 }
 
 install_android_studio() {
+    require_latest "Android Studio" "$LATEST_ANDROID_STUDIO" || return 1
     echo -e "${BLUE}Installing Android Studio v${LATEST_ANDROID_STUDIO}...${NC}"
-    local download_url
-    download_url=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/android-studio.json | grep -o '"url":"[^"]*"' | head -n 1 | cut -d'"' -f4)
-    if [ "$ARCH" = "x86_64" ]; then
-        download_url="${download_url/_arm.dmg/.dmg}"
-    fi
+    # Already arch-specific: the probe picked -mac_arm.dmg or -mac.dmg.
+    local download_url="$ANDROID_STUDIO_URL"
     local temp_dmg=$(mktemp /tmp/android-studio.XXXXXX)
     
     echo "Downloading ${download_url}..."
@@ -1602,34 +1624,36 @@ install_android_studio() {
     reopen_app_if_was_running "Android Studio" "/Applications/Android Studio.app" "$WAS_RUNNING_ANDROID_STUDIO"
 }
 
-install_codex() {
-    echo -e "${BLUE}Installing Codex v${LATEST_CODEX}...${NC}"
-    local download_url
-    download_url=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/codex-app.json | grep -o '"url":"[^"]*"' | head -n 1 | cut -d'"' -f4)
-    if [ "$ARCH" = "x86_64" ]; then
-        download_url="${download_url/darwin-arm64/darwin-x64}"
+install_chatgpt() {
+    if [ "$ARCH" = "x86_64" ] && [ -z "$CHATGPT_URL" ]; then
+        echo -e "${RED}Error: OpenAI publishes no Intel build of ChatGPT for macOS. Skipping.${NC}"
+        return 1
     fi
-    local temp_zip=$(mktemp /tmp/codex.XXXXXX)
+    require_latest "ChatGPT" "$LATEST_CHATGPT" || return 1
+    echo -e "${BLUE}Installing ChatGPT v${LATEST_CHATGPT}...${NC}"
+    # The zip from the app's own appcast, already arch-specific.
+    local download_url="$CHATGPT_URL"
+    local temp_zip=$(mktemp /tmp/chatgpt.XXXXXX)
     
     echo "Downloading ${download_url}..."
     if ! curl -fL --progress-bar "$download_url" -o "$temp_zip"; then
-        echo -e "${RED}Error: Failed to download Codex.${NC}"
+        echo -e "${RED}Error: Failed to download ChatGPT.${NC}"
         return 1
     fi
     
-    echo "Extracting Codex.app..."
+    echo "Extracting ChatGPT.app..."
     local temp_dir
-    temp_dir=$(mktemp -d /tmp/codex_extract.XXXXXX)
+    temp_dir=$(mktemp -d /tmp/chatgpt_extract.XXXXXX)
     if ! unzip -q -o "$temp_zip" -d "$temp_dir"; then
-        echo -e "${RED}Error: Failed to extract Codex zip.${NC}"
+        echo -e "${RED}Error: Failed to extract ChatGPT zip.${NC}"
         rm -f "$temp_zip"
         rm -rf "$temp_dir"
         return 1
     fi
     
     echo "Copying to Applications..."
-    if ! install_app_bundle "${temp_dir}/Codex.app" "Codex.app"; then
-        echo -e "${RED}Error: Failed to copy Codex.app to /Applications.${NC}"
+    if ! install_app_bundle "${temp_dir}/ChatGPT.app" "ChatGPT.app"; then
+        echo -e "${RED}Error: Failed to copy ChatGPT.app to /Applications.${NC}"
         rm -rf "$temp_dir"
         rm -f "$temp_zip"
         return 1
@@ -1638,48 +1662,48 @@ install_codex() {
     rm -rf "$temp_dir"
     rm -f "$temp_zip"
     
-    echo -e "${GREEN}✓ Codex v${LATEST_CODEX} installed to /Applications/Codex.app!${NC}"
-    reopen_app_if_was_running "Codex" "/Applications/Codex.app" "$WAS_RUNNING_CODEX"
+    echo -e "${GREEN}✓ ChatGPT v${LATEST_CHATGPT} installed to /Applications/ChatGPT.app!${NC}"
+    reopen_app_if_was_running "ChatGPT" "/Applications/ChatGPT.app" "$WAS_RUNNING_CHATGPT"
 }
 
 install_antigravity() {
-    echo -e "${BLUE}Installing Antigravity v${LATEST_ANTIGRAVITY}...${NC}"
-    local download_url
-    download_url=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/antigravity.json | grep -o '"url":"[^"]*"' | head -n 1 | cut -d'"' -f4)
-    if [ "$ARCH" = "x86_64" ]; then
-        download_url="${download_url/darwin-arm/darwin-x64}"
+    require_latest "Antigravity" "$LATEST_ANTIGRAVITY" || return 1
+    if [ -z "$ANTIGRAVITY_URL" ]; then
+        echo -e "${RED}Error: Antigravity's update manifest listed no download. Skipping.${NC}"
+        return 1
     fi
-    local temp_dmg=$(mktemp /tmp/antigravity.XXXXXX)
+    echo -e "${BLUE}Installing Antigravity v${LATEST_ANTIGRAVITY}...${NC}"
+    # The zip Antigravity's own updater installs, already arch-specific.
+    local download_url="$ANTIGRAVITY_URL"
+    local temp_zip=$(mktemp /tmp/antigravity.XXXXXX)
     
     echo "Downloading ${download_url}..."
-    if ! curl -fL --progress-bar "$download_url" -o "$temp_dmg"; then
+    if ! curl -fL --progress-bar "$download_url" -o "$temp_zip"; then
         echo -e "${RED}Error: Failed to download Antigravity.${NC}"
+        rm -f "$temp_zip"
         return 1
     fi
     
-    echo "Mounting DMG..."
-    local mount_point="/Volumes/Antigravity_temp_$$"
-    mkdir -p "$mount_point"
-    if ! hdiutil attach -nobrowse -readonly -mountpoint "$mount_point" "$temp_dmg"; then
-        echo -e "${RED}Error: Failed to mount Antigravity DMG.${NC}"
-        rm -f "$temp_dmg"
-        rm -rf "$mount_point"
+    echo "Extracting Antigravity.app..."
+    local temp_dir
+    temp_dir=$(mktemp -d /tmp/antigravity_extract.XXXXXX)
+    if ! unzip -q -o "$temp_zip" -d "$temp_dir"; then
+        echo -e "${RED}Error: Failed to extract Antigravity zip.${NC}"
+        rm -f "$temp_zip"
+        rm -rf "$temp_dir"
         return 1
     fi
     
     echo "Copying to Applications..."
-    if ! install_app_bundle "${mount_point}/Antigravity.app" "Antigravity.app"; then
+    if ! install_app_bundle "${temp_dir}/Antigravity.app" "Antigravity.app"; then
         echo -e "${RED}Error: Failed to copy Antigravity to /Applications.${NC}"
-        hdiutil detach "$mount_point"
-        rm -f "$temp_dmg"
-        rm -rf "$mount_point"
+        rm -rf "$temp_dir"
+        rm -f "$temp_zip"
         return 1
     fi
     
-    echo "Unmounting DMG..."
-    hdiutil detach "$mount_point"
-    rm -rf "$mount_point"
-    rm -f "$temp_dmg"
+    rm -rf "$temp_dir"
+    rm -f "$temp_zip"
     
     echo -e "${GREEN}✓ Antigravity v${LATEST_ANTIGRAVITY} installed to /Applications/Antigravity.app!${NC}"
     reopen_app_if_was_running "Antigravity" "/Applications/Antigravity.app" "$WAS_RUNNING_ANTIGRAVITY"
@@ -2077,7 +2101,7 @@ select_outdated() {
     is_outdated "$INST_COMPASS" "$LATEST_COMPASS" && SEL_14=1
     is_outdated "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY" && SEL_15=1
     is_outdated "$INST_CLAUDE" "$LATEST_CLAUDE" && SEL_16=1
-    is_outdated "$INST_CODEX" "$LATEST_CODEX" && SEL_17=1
+    is_outdated "$INST_CHATGPT" "$LATEST_CHATGPT" && SEL_17=1
     is_outdated "$INST_CHROME" "$LATEST_CHROME" && SEL_18=1
     globals_outdated && SEL_19=1
 }
@@ -2098,7 +2122,7 @@ has_outdated_tools() {
     is_outdated "$INST_COMPASS" "$LATEST_COMPASS" && return 0
     is_outdated "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY" && return 0
     is_outdated "$INST_CLAUDE" "$LATEST_CLAUDE" && return 0
-    is_outdated "$INST_CODEX" "$LATEST_CODEX" && return 0
+    is_outdated "$INST_CHATGPT" "$LATEST_CHATGPT" && return 0
     is_outdated "$INST_CHROME" "$LATEST_CHROME" && return 0
     globals_outdated && return 0
     return 1
@@ -2125,7 +2149,7 @@ installed_version_for() {
         14) echo "$INST_COMPASS" ;;
         15) echo "$INST_ANTIGRAVITY" ;;
         16) echo "$INST_CLAUDE" ;;
-        17) echo "$INST_CODEX" ;;
+        17) echo "$INST_CHATGPT" ;;
         18) echo "$INST_CHROME" ;;
         # Updating packages is never a first-time install of anything.
         19) echo "$GLOBAL_PMS" ;;
@@ -2149,7 +2173,7 @@ refresh_installed_tools() {
     INST_DBX=$(detect_dbx)
     INST_CHROME=$(detect_chrome)
     INST_ANDROID_STUDIO=$(detect_android_studio)
-    INST_CODEX=$(detect_codex)
+    INST_CHATGPT=$(detect_chatgpt)
     INST_ANTIGRAVITY=$(detect_antigravity)
     INST_GCLOUD=$(detect_gcloud)
     GLOBAL_PMS=$(detect_global_pms)
@@ -2215,7 +2239,7 @@ while true; do
             echo -e "${PURPLE}── AI & Applications & Utilities ────────────────${NC}\033[K"
             show_line 15 "$(show_checkbox "$SEL_15") 15) 🚀 Antigravity        $(format_status "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY")"
             show_line 16 "$(show_checkbox "$SEL_16") 16) 💥 Claude             $(format_status "$INST_CLAUDE" "$LATEST_CLAUDE")"
-            show_line 17 "$(show_checkbox "$SEL_17") 17) 🧠 Codex              $(format_status "$INST_CODEX" "$LATEST_CODEX")"
+            show_line 17 "$(show_checkbox "$SEL_17") 17) 💬 ChatGPT            $(format_status "$INST_CHATGPT" "$LATEST_CHATGPT")"
             show_line 18 "$(show_checkbox "$SEL_18") 18) 🌐 Google Chrome      $(format_status "$INST_CHROME" "$LATEST_CHROME")"
             echo -e "${PURPLE}── Global Packages ──────────────────────────────${NC}\033[K"
             show_line 19 "$(show_checkbox "$SEL_19") 19) 📦 Global Packages    $(format_globals_status "$GLOBAL_PMS" "$OUTDATED_NPM" "$OUTDATED_BREW")"
@@ -2442,7 +2466,7 @@ while true; do
         if [ "$SEL_16" -eq 1 ] && is_up_to_date "$INST_CLAUDE" "$LATEST_CLAUDE" && ! confirm_reinstall "Claude" "$INST_CLAUDE" "$LATEST_CLAUDE"; then
             SEL_16=0
         fi
-        if [ "$SEL_17" -eq 1 ] && is_up_to_date "$INST_CODEX" "$LATEST_CODEX" && ! confirm_reinstall "Codex" "$INST_CODEX" "$LATEST_CODEX"; then
+        if [ "$SEL_17" -eq 1 ] && is_up_to_date "$INST_CHATGPT" "$LATEST_CHATGPT" && ! confirm_reinstall "ChatGPT" "$INST_CHATGPT" "$LATEST_CHATGPT"; then
             SEL_17=0
         fi
         if [ "$SEL_18" -eq 1 ] && is_up_to_date "$INST_CHROME" "$LATEST_CHROME" && ! confirm_reinstall "Google Chrome" "$INST_CHROME" "$LATEST_CHROME"; then
@@ -2472,7 +2496,7 @@ while true; do
                     14) app_p="/Applications/MongoDB Compass.app" ;;
                     15) app_p="/Applications/Antigravity.app" ;;
                     16) app_p="/Applications/Claude.app" ;;
-                    17) app_p="/Applications/Codex.app" ;;
+                    17) app_p="/Applications/ChatGPT.app" ;;
                     18) app_p="/Applications/Google Chrome.app" ;;
                 esac
                 if [[ "$app_p" == "$host_app" ]]; then
@@ -2524,7 +2548,7 @@ while true; do
         WAS_RUNNING_COMPASS=0
         WAS_RUNNING_ANTIGRAVITY=0
         WAS_RUNNING_CLAUDE=0
-        WAS_RUNNING_CODEX=0
+        WAS_RUNNING_CHATGPT=0
         WAS_RUNNING_CHROME=0
 
         running_app_names=()
@@ -2557,9 +2581,9 @@ while true; do
             running_app_names+=("Claude")
             WAS_RUNNING_CLAUDE=1
         fi
-        if [ "$SEL_17" -eq 1 ] && is_app_running "/Applications/Codex.app"; then
-            running_app_names+=("Codex")
-            WAS_RUNNING_CODEX=1
+        if [ "$SEL_17" -eq 1 ] && is_app_running "/Applications/ChatGPT.app"; then
+            running_app_names+=("ChatGPT")
+            WAS_RUNNING_CHATGPT=1
         fi
         if [ "$SEL_18" -eq 1 ] && is_app_running "/Applications/Google Chrome.app"; then
             running_app_names+=("Google Chrome")
@@ -2693,9 +2717,9 @@ while true; do
                 echo ""
             fi
 
-            # 17. Codex
+            # 17. ChatGPT
             if [ "$SEL_17" -eq 1 ]; then
-                install_codex
+                install_chatgpt
                 echo ""
             fi
 
