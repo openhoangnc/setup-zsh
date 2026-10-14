@@ -33,7 +33,7 @@ source ~/.zshrc
 - **自动切换目录** — 直接输入路径按回车，不用打 `cd`。
 - **彩色文件列表** — 文件和目录有各自的颜色，深色和浅色背景都好看。
 - **更好的默认设置** — Tab 补全不区分大小写、更智能的历史记录（自动去重）、最多保存 100,000 条命令，以及开箱即用的常用按键（Home / End / Fn+Delete / Option+方向键按单词跳转）。
-- **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Bun、Go、Homebrew、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、gcloud CLI、Git、OrbStack、Android Studio、VSCode、DBeaver、MongoDB Compass、Antigravity、Claude 和 Google Chrome；还有 **Global Packages** 一项，用于更新各包管理器安装的包——npm、pnpm、Yarn、Bun、Homebrew、uv、pipx、RubyGems、Composer、cargo 中你已安装的那些。用方向键选择即可。
+- **开发工具安装器 (`install-dev-tool`)** — 交互式菜单，可安装 Bun、Go、Homebrew、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、Codex、gcloud CLI、Git、OrbStack、Android Studio、VSCode、DBX、MongoDB Compass、Antigravity、Claude 和 Google Chrome；还有 **Global Packages** 一项，用于更新各包管理器安装的包——npm、pnpm、Yarn、Bun、Homebrew、uv、pipx、RubyGems、Composer、cargo 中你已安装的那些。用方向键选择即可。
 - **Mac 清理工具 (`cdm`)** — 安装 [**CleanDevMac**](https://github.com/cleandevmac/cdm)，我的独立清理工具（它最初就诞生于本仓库）。它能回收可再生的开发者缓存和构建产物（Xcode、Go、Node/npm/pnpm/yarn、Gradle、Maven、Cargo、Python、Homebrew、Playwright 等）所占用的磁盘空间，清理 Electron/浏览器/应用缓存，清扫按仓库分组的项目垃圾，回收 Docker/Podman 空间，并找出你已卸载应用残留的数据 — 未经逐项确认绝不删除任何东西。
 
 ---
@@ -90,7 +90,7 @@ source ~/.zshrc
 - Homebrew 通过其官方脚本 (`https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`) 安装并自动配置 `shellenv`。
 - Python 会与 `uv`（Astral 出品的高性能 Python 包与项目管理器）一起安装。
 - JDK 安装官方 Eclipse Temurin LTS 版本并自动配置 `JAVA_HOME`。
-- 桌面应用（VSCode、Claude、OrbStack、MongoDB Compass、DBeaver、Google Chrome、Android Studio、Antigravity）会自动下载并放入 `/Applications`。
+- 桌面应用（VSCode、Claude、OrbStack、MongoDB Compass、DBX、Google Chrome、Android Studio、Antigravity）会自动下载并放入 `/Applications`。
 - 正在运行的应用在下载更新期间可以继续使用，只会在替换为新版本的那一刻被关闭，随后自动重新打开；下载失败则不会关闭。安装器所运行于*其中*的应用（如 VSCode、Antigravity 或 Claude 的内置终端）会被跳过并给出警告——关闭它会连同当前会话一起结束——请改用 Terminal.app 等其他终端来更新它。
 - Git 通过 Apple 官方的 `xcode-select --install` 安装。
 - **Global Packages**（第 19 项）更新的是包管理器装的包，而不是管理器本身，并覆盖你已安装的每个管理器：npm（过时全局包以 `@latest` 重装；`npm`/`corepack` 交由 Node.js 发行包管理）、pnpm（`update -g --latest`）、Yarn Classic（`global upgrade --latest`）、Bun（`update --global`）、Homebrew（`update && upgrade`）、uv（`tool upgrade --all`）、pipx（`upgrade-all`）、RubyGems（`gem update`，跳过 macOS 系统 Ruby）、Composer（`global update`）以及 cargo（仅当存在 `cargo-install-update` 插件时 `install-update -a`）。该行显示 npm 和 Homebrew 的待更新数量（这两者查询开销小）；**在该行按回车可查看各管理器的完整明细**。更新完成后还会清理各管理器的缓存（npm/Yarn `cache clean`、pnpm `store prune`、Bun `pm cache rm`、`brew cleanup`、uv `cache prune`、`gem cleanup`、Composer `clear-cache`）——尽力而为，清理出问题不会让更新失败。

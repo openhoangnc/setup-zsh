@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # setup-zsh Developer Tool Installer
-# Installs and updates Bun, Go, Homebrew, JDK (Eclipse Temurin LTS), Node.js, Python & uv, Rust, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBeaver, MongoDB Compass, Antigravity, Claude, and Google Chrome on macOS.
+# Installs and updates Bun, Go, Homebrew, JDK (Eclipse Temurin LTS), Node.js, Python & uv, Rust, gcloud CLI, Git, OrbStack, Android Studio, VSCode, DBX, MongoDB Compass, Antigravity, Claude, and Google Chrome on macOS.
 # Also updates the packages installed *through* those tools: global packages of npm, pnpm, Yarn (classic), Bun, Homebrew, uv, pipx, RubyGems, Composer, and cargo (via cargo-install-update).
 
 # ANSI color codes
@@ -19,14 +19,14 @@ if [ "$ARCH" = "x86_64" ]; then
     GO_ARCH="amd64"
     NODE_ARCH="x64"
     ORB_ARCH="amd64"
-    DBEAVER_ARCH="x86_64"
+    DBX_ARCH="x64"
     JDK_ARCH="x64"
     GCLOUD_ARCH="x86_64"
 else
     GO_ARCH="arm64"
     NODE_ARCH="arm64"
     ORB_ARCH="arm64"
-    DBEAVER_ARCH="aarch64"
+    DBX_ARCH="arm64"
     JDK_ARCH="aarch64"
     GCLOUD_ARCH="arm"
 fi
@@ -321,14 +321,17 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 ) &
 
 (
-    # install_dbeaver builds a dbeaver.io/files/<version>/ URL, and DBeaver's
-    # release tags are bare versions (26.2.0) — the same string. Read the tags so
-    # a lagging cask can't hide a release that dbeaver.io is already serving.
-    LATEST=$(curl -s --max-time 10 https://github.com/dbeaver/dbeaver/releases.atom | grep -o 'releases/tag/[0-9][^"<]*' | head -n 1 | sed 's#releases/tag/##')
+    # install_dbx builds a github.com/t8y2/dbx/releases/download/v<version>/ URL,
+    # so the version must be one that actually has assets. The repo also tags
+    # non-app packages (agents-v…, packages-v…) and pushes the v… tag before the
+    # release build has uploaded its DMGs, so neither the atom feed nor the tag
+    # list is safe here. /releases/latest redirects only to the newest published,
+    # non-prerelease release and needs no API token; the API is the fallback.
+    LATEST=$(curl -sI --max-time 10 https://github.com/t8y2/dbx/releases/latest | grep -i "^location:" | grep -o "/tag/v[0-9][^[:space:]]*" | sed "s#/tag/v##")
     if [ -z "$LATEST" ]; then
-        LATEST=$(curl -s --max-time 10 https://formulae.brew.sh/api/cask/dbeaver-community.json | grep -o '"version":"[^"]*"' | head -n 1 | cut -d'"' -f4)
+        LATEST=$(curl -s --max-time 10 https://api.github.com/repos/t8y2/dbx/releases/latest | grep -o '"tag_name": "[^"]*"' | head -n 1 | cut -d'"' -f4 | sed 's/^v//')
     fi
-    echo "$LATEST" > "$TEMP_VER_DIR/dbeaver"
+    echo "$LATEST" > "$TEMP_VER_DIR/dbx"
 ) &
 
 (
@@ -463,7 +466,7 @@ LATEST_JDK=$(cat "$TEMP_VER_DIR/jdk" 2>/dev/null || echo "Unknown")
 LATEST_CLAUDE=$(cat "$TEMP_VER_DIR/claude" 2>/dev/null || echo "Unknown")
 LATEST_RUST=$(cat "$TEMP_VER_DIR/rust" 2>/dev/null || echo "Unknown")
 LATEST_COMPASS=$(cat "$TEMP_VER_DIR/compass" 2>/dev/null || echo "Unknown")
-LATEST_DBEAVER=$(cat "$TEMP_VER_DIR/dbeaver" 2>/dev/null || echo "Unknown")
+LATEST_DBX=$(cat "$TEMP_VER_DIR/dbx" 2>/dev/null || echo "Unknown")
 LATEST_CHROME=$(cat "$TEMP_VER_DIR/chrome" 2>/dev/null || echo "Unknown")
 LATEST_ANDROID_STUDIO=$(cat "$TEMP_VER_DIR/android_studio" 2>/dev/null || echo "Unknown")
 LATEST_CODEX=$(cat "$TEMP_VER_DIR/codex" 2>/dev/null || echo "Unknown")
@@ -476,7 +479,7 @@ rm -rf "$TEMP_VER_DIR"
 # The curl|grep pipelines above yield an empty string (not "Unknown") when the
 # network or an API fails — normalize so empty versions never look like upgrades
 for v in LATEST_BUN LATEST_GO LATEST_NODE LATEST_ORB LATEST_VSCODE LATEST_PYTHON \
-         LATEST_UV LATEST_JDK LATEST_CLAUDE LATEST_RUST LATEST_COMPASS LATEST_DBEAVER \
+         LATEST_UV LATEST_JDK LATEST_CLAUDE LATEST_RUST LATEST_COMPASS LATEST_DBX \
          LATEST_CHROME LATEST_ANDROID_STUDIO LATEST_CODEX LATEST_ANTIGRAVITY LATEST_GCLOUD \
          LATEST_HOMEBREW; do
     if [ -z "$(eval echo "\$$v")" ]; then
@@ -578,9 +581,9 @@ detect_compass() {
     fi
 }
 
-detect_dbeaver() {
-    if [[ -d "/Applications/DBeaver.app" ]]; then
-        defaults read "/Applications/DBeaver.app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo ""
+detect_dbx() {
+    if [[ -d "/Applications/DBX.app" ]]; then
+        defaults read "/Applications/DBX.app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo ""
     fi
 }
 
@@ -1464,31 +1467,31 @@ install_compass() {
     reopen_app_if_was_running "MongoDB Compass" "/Applications/MongoDB Compass.app" "$WAS_RUNNING_COMPASS"
 }
 
-install_dbeaver() {
-    require_latest "DBeaver" "$LATEST_DBEAVER" || return 1
-    echo -e "${BLUE}Installing DBeaver Community Edition v${LATEST_DBEAVER}...${NC}"
-    local download_url="https://dbeaver.io/files/${LATEST_DBEAVER}/dbeaver-ce-${LATEST_DBEAVER}-macos-${DBEAVER_ARCH}.dmg"
-    local temp_dmg=$(mktemp /tmp/dbeaver.XXXXXX)
+install_dbx() {
+    require_latest "DBX" "$LATEST_DBX" || return 1
+    echo -e "${BLUE}Installing DBX v${LATEST_DBX}...${NC}"
+    local download_url="https://github.com/t8y2/dbx/releases/download/v${LATEST_DBX}/DBX_${LATEST_DBX}_${DBX_ARCH}.dmg"
+    local temp_dmg=$(mktemp /tmp/dbx.XXXXXX)
     
     echo "Downloading ${download_url}..."
     if ! curl -fL --progress-bar "$download_url" -o "$temp_dmg"; then
-        echo -e "${RED}Error: Failed to download DBeaver.${NC}"
+        echo -e "${RED}Error: Failed to download DBX.${NC}"
         return 1
     fi
     
     echo "Mounting DMG..."
-    local mount_point="/Volumes/DBeaver_temp_$$"
+    local mount_point="/Volumes/DBX_temp_$$"
     mkdir -p "$mount_point"
     if ! hdiutil attach -nobrowse -readonly -mountpoint "$mount_point" "$temp_dmg"; then
-        echo -e "${RED}Error: Failed to mount DBeaver DMG.${NC}"
+        echo -e "${RED}Error: Failed to mount DBX DMG.${NC}"
         rm -f "$temp_dmg"
         rm -rf "$mount_point"
         return 1
     fi
     
     echo "Copying to Applications..."
-    if ! install_app_bundle "${mount_point}/DBeaver.app" "DBeaver.app"; then
-        echo -e "${RED}Error: Failed to copy DBeaver to /Applications.${NC}"
+    if ! install_app_bundle "${mount_point}/DBX.app" "DBX.app"; then
+        echo -e "${RED}Error: Failed to copy DBX to /Applications.${NC}"
         hdiutil detach "$mount_point"
         rm -f "$temp_dmg"
         rm -rf "$mount_point"
@@ -1500,8 +1503,8 @@ install_dbeaver() {
     rm -rf "$mount_point"
     rm -f "$temp_dmg"
     
-    echo -e "${GREEN}✓ DBeaver Community Edition v${LATEST_DBEAVER} installed to /Applications/DBeaver.app!${NC}"
-    reopen_app_if_was_running "DBeaver" "/Applications/DBeaver.app" "$WAS_RUNNING_DBEAVER"
+    echo -e "${GREEN}✓ DBX v${LATEST_DBX} installed to /Applications/DBX.app!${NC}"
+    reopen_app_if_was_running "DBX" "/Applications/DBX.app" "$WAS_RUNNING_DBX"
 }
 
 install_chrome() {
@@ -2070,7 +2073,7 @@ select_outdated() {
     is_outdated "$INST_ORB" "$LATEST_ORB" && SEL_10=1
     is_outdated "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO" && SEL_11=1
     is_outdated "$INST_VSCODE" "$LATEST_VSCODE" && SEL_12=1
-    is_outdated "$INST_DBEAVER" "$LATEST_DBEAVER" && SEL_13=1
+    is_outdated "$INST_DBX" "$LATEST_DBX" && SEL_13=1
     is_outdated "$INST_COMPASS" "$LATEST_COMPASS" && SEL_14=1
     is_outdated "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY" && SEL_15=1
     is_outdated "$INST_CLAUDE" "$LATEST_CLAUDE" && SEL_16=1
@@ -2091,7 +2094,7 @@ has_outdated_tools() {
     is_outdated "$INST_ORB" "$LATEST_ORB" && return 0
     is_outdated "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO" && return 0
     is_outdated "$INST_VSCODE" "$LATEST_VSCODE" && return 0
-    is_outdated "$INST_DBEAVER" "$LATEST_DBEAVER" && return 0
+    is_outdated "$INST_DBX" "$LATEST_DBX" && return 0
     is_outdated "$INST_COMPASS" "$LATEST_COMPASS" && return 0
     is_outdated "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY" && return 0
     is_outdated "$INST_CLAUDE" "$LATEST_CLAUDE" && return 0
@@ -2118,7 +2121,7 @@ installed_version_for() {
         10) echo "$INST_ORB" ;;
         11) echo "$INST_ANDROID_STUDIO" ;;
         12) echo "$INST_VSCODE" ;;
-        13) echo "$INST_DBEAVER" ;;
+        13) echo "$INST_DBX" ;;
         14) echo "$INST_COMPASS" ;;
         15) echo "$INST_ANTIGRAVITY" ;;
         16) echo "$INST_CLAUDE" ;;
@@ -2143,7 +2146,7 @@ refresh_installed_tools() {
     INST_GIT=$(detect_git)
     INST_HOMEBREW=$(detect_homebrew)
     INST_COMPASS=$(detect_compass)
-    INST_DBEAVER=$(detect_dbeaver)
+    INST_DBX=$(detect_dbx)
     INST_CHROME=$(detect_chrome)
     INST_ANDROID_STUDIO=$(detect_android_studio)
     INST_CODEX=$(detect_codex)
@@ -2207,7 +2210,7 @@ while true; do
             show_line 11 "$(show_checkbox "$SEL_11") 11) 🤖 Android Studio     $(format_status "$INST_ANDROID_STUDIO" "$LATEST_ANDROID_STUDIO")"
             show_line 12 "$(show_checkbox "$SEL_12") 12) 🟦 VSCode             $(format_status "$INST_VSCODE" "$LATEST_VSCODE")"
             echo -e "${PURPLE}── Database Tools ───────────────────────────────${NC}\033[K"
-            show_line 13 "$(show_checkbox "$SEL_13") 13) 🦫 DBeaver            $(format_status "$INST_DBEAVER" "$LATEST_DBEAVER")"
+            show_line 13 "$(show_checkbox "$SEL_13") 13) 💾 DBX                $(format_status "$INST_DBX" "$LATEST_DBX")"
             show_line 14 "$(show_checkbox "$SEL_14") 14) 🧭 MongoDB Compass    $(format_status "$INST_COMPASS" "$LATEST_COMPASS")"
             echo -e "${PURPLE}── AI & Applications & Utilities ────────────────${NC}\033[K"
             show_line 15 "$(show_checkbox "$SEL_15") 15) 🚀 Antigravity        $(format_status "$INST_ANTIGRAVITY" "$LATEST_ANTIGRAVITY")"
@@ -2427,7 +2430,7 @@ while true; do
         if [ "$SEL_12" -eq 1 ] && is_up_to_date "$INST_VSCODE" "$LATEST_VSCODE" && ! confirm_reinstall "VSCode" "$INST_VSCODE" "$LATEST_VSCODE"; then
             SEL_12=0
         fi
-        if [ "$SEL_13" -eq 1 ] && is_up_to_date "$INST_DBEAVER" "$LATEST_DBEAVER" && ! confirm_reinstall "DBeaver Community Edition" "$INST_DBEAVER" "$LATEST_DBEAVER"; then
+        if [ "$SEL_13" -eq 1 ] && is_up_to_date "$INST_DBX" "$LATEST_DBX" && ! confirm_reinstall "DBX" "$INST_DBX" "$LATEST_DBX"; then
             SEL_13=0
         fi
         if [ "$SEL_14" -eq 1 ] && is_up_to_date "$INST_COMPASS" "$LATEST_COMPASS" && ! confirm_reinstall "MongoDB Compass" "$INST_COMPASS" "$LATEST_COMPASS"; then
@@ -2465,7 +2468,7 @@ while true; do
                     10) app_p="/Applications/OrbStack.app" ;;
                     11) app_p="/Applications/Android Studio.app" ;;
                     12) app_p="/Applications/Visual Studio Code.app" ;;
-                    13) app_p="/Applications/DBeaver.app" ;;
+                    13) app_p="/Applications/DBX.app" ;;
                     14) app_p="/Applications/MongoDB Compass.app" ;;
                     15) app_p="/Applications/Antigravity.app" ;;
                     16) app_p="/Applications/Claude.app" ;;
@@ -2517,7 +2520,7 @@ while true; do
         WAS_RUNNING_ORB=0
         WAS_RUNNING_ANDROID_STUDIO=0
         WAS_RUNNING_VSCODE=0
-        WAS_RUNNING_DBEAVER=0
+        WAS_RUNNING_DBX=0
         WAS_RUNNING_COMPASS=0
         WAS_RUNNING_ANTIGRAVITY=0
         WAS_RUNNING_CLAUDE=0
@@ -2538,9 +2541,9 @@ while true; do
             running_app_names+=("VSCode")
             WAS_RUNNING_VSCODE=1
         fi
-        if [ "$SEL_13" -eq 1 ] && is_app_running "/Applications/DBeaver.app"; then
-            running_app_names+=("DBeaver")
-            WAS_RUNNING_DBEAVER=1
+        if [ "$SEL_13" -eq 1 ] && is_app_running "/Applications/DBX.app"; then
+            running_app_names+=("DBX")
+            WAS_RUNNING_DBX=1
         fi
         if [ "$SEL_14" -eq 1 ] && is_app_running "/Applications/MongoDB Compass.app"; then
             running_app_names+=("MongoDB Compass")
@@ -2666,9 +2669,9 @@ while true; do
                 echo ""
             fi
 
-            # 13. DBeaver
+            # 13. DBX
             if [ "$SEL_13" -eq 1 ]; then
-                install_dbeaver
+                install_dbx
                 echo ""
             fi
 
