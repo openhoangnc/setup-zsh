@@ -255,7 +255,12 @@ autoload -Uz compinit
 () {
 	setopt local_options extended_glob
 	if [[ ! -f $HOME/.zcompdump || -n $HOME/.zcompdump(#qN.mh+24) ]]; then
-		compinit
+		# -u: on a Mac shared between accounts, Homebrew's completion dirs are
+		# owned by whichever user installed Homebrew. compaudit flags those as
+		# insecure and the daily audit would stop at an "Ignore insecure
+		# directories and continue [y] or abort compinit [n]?" prompt, so use
+		# them without asking instead.
+		compinit -u
 	else
 		compinit -C
 	fi
