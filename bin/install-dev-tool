@@ -868,6 +868,26 @@ is_app_running() {
     return 1
 }
 
+host_app_bundle() {
+    # Print the /Applications/X.app this installer is running inside, if any,
+    # by walking the process ancestry: a terminal built into an app (VSCode,
+    # Antigravity, Claude) makes that app's helper an ancestor of our shell.
+    # Closing that app to replace it would hang up our own terminal and kill
+    # the rest of the batch. (Under tmux/screen the chain stops at the
+    # daemonized server, so this cannot see through them.)
+    local pid=$$ cmd
+    while [[ -n "$pid" && "$pid" -gt 1 ]]; do
+        cmd=$(ps -o comm= -p "$pid" 2>/dev/null)
+        if [[ "$cmd" == /Applications/*.app/* ]]; then
+            cmd="${cmd#/Applications/}"
+            echo "/Applications/${cmd%%.app/*}.app"
+            return 0
+        fi
+        pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+    done
+    return 1
+}
+
 kill_app() {
     local app_path="$1"
     if pgrep -f "$app_path" &>/dev/null; then
@@ -893,14 +913,41 @@ install_app_bundle() {
     # Stage the new bundle first so a failed copy never leaves the app deleted
     local src="$1"    # path to the new X.app
     local name="$2"   # bundle name in /Applications, e.g. "OrbStack.app"
+    local dest="/Applications/${name}"
     local staging="/Applications/.${name}.staging"
+    local old="/Applications/.${name}.old"
     rm -rf "$staging"
     if ! ditto "$src" "$staging"; then
         rm -rf "$staging"
         return 1
     fi
-    rm -rf "/Applications/${name}"
-    mv "$staging" "/Applications/${name}"
+
+    # The app is only closed here, once download, extraction and the staging
+    # copy have all succeeded, so it keeps running through the slow part and a
+    # failed download never leaves it closed. The swap runs in a subshell that
+    # ignores HUP/INT/TERM/PIPE: when this installer runs inside the app being
+    # replaced (VSCode's or Antigravity's terminal), killing the app hangs up
+    # our terminal, and dying between the two renames would leave no app at
+    # all. Two renames on one volume are near-instant; the old copy is removed
+    # only after the new one is in place.
+    (
+        trap '' HUP INT TERM PIPE
+        if pgrep -f "$dest" &>/dev/null; then
+            echo "Closing ${name%.app}..."
+            kill_app "$dest"
+        fi
+        rm -rf "$old"
+        if [[ -d "$dest" ]] && ! mv "$dest" "$old"; then
+            rm -rf "$staging"
+            exit 1
+        fi
+        if ! mv "$staging" "$dest"; then
+            [[ -d "$old" ]] && mv "$old" "$dest"
+            rm -rf "$staging"
+            exit 1
+        fi
+        rm -rf "$old"
+    )
 }
 
 install_bun() {
@@ -2407,6 +2454,33 @@ while true; do
             fi
         fi
 
+        # Never replace the app this installer is running inside: closing it
+        # takes our terminal with it, killing the rest of the batch.
+        host_app=$(host_app_bundle)
+        if [[ -n "$host_app" ]]; then
+            for i in {10..18}; do
+                eval "val=\$SEL_$i"
+                [ "$val" -eq 1 ] || continue
+                case $i in
+                    10) app_p="/Applications/OrbStack.app" ;;
+                    11) app_p="/Applications/Android Studio.app" ;;
+                    12) app_p="/Applications/Visual Studio Code.app" ;;
+                    13) app_p="/Applications/DBeaver.app" ;;
+                    14) app_p="/Applications/MongoDB Compass.app" ;;
+                    15) app_p="/Applications/Antigravity.app" ;;
+                    16) app_p="/Applications/Claude.app" ;;
+                    17) app_p="/Applications/Codex.app" ;;
+                    18) app_p="/Applications/Google Chrome.app" ;;
+                esac
+                if [[ "$app_p" == "$host_app" ]]; then
+                    app_n=$(basename "$app_p" .app)
+                    echo -e "${YELLOW}⚠️  Skipping ${app_n}: this installer is running inside it, and closing it would end this session.${NC}"
+                    echo -e "${YELLOW}   Re-run install-dev-tool from another terminal (e.g. Terminal.app) to update ${app_n}.${NC}"
+                    eval "SEL_$i=0"
+                fi
+            done
+        fi
+
         # Recount after up-to-date checks
         count=0
         for i in {1..19}; do
@@ -2451,60 +2525,51 @@ while true; do
         WAS_RUNNING_CHROME=0
 
         running_app_names=()
-        running_app_paths=()
 
         if [ "$SEL_10" -eq 1 ] && is_app_running "/Applications/OrbStack.app"; then
             running_app_names+=("OrbStack")
-            running_app_paths+=("/Applications/OrbStack.app")
             WAS_RUNNING_ORB=1
         fi
         if [ "$SEL_11" -eq 1 ] && is_app_running "/Applications/Android Studio.app"; then
             running_app_names+=("Android Studio")
-            running_app_paths+=("/Applications/Android Studio.app")
             WAS_RUNNING_ANDROID_STUDIO=1
         fi
         if [ "$SEL_12" -eq 1 ] && is_app_running "/Applications/Visual Studio Code.app"; then
             running_app_names+=("VSCode")
-            running_app_paths+=("/Applications/Visual Studio Code.app")
             WAS_RUNNING_VSCODE=1
         fi
         if [ "$SEL_13" -eq 1 ] && is_app_running "/Applications/DBeaver.app"; then
             running_app_names+=("DBeaver")
-            running_app_paths+=("/Applications/DBeaver.app")
             WAS_RUNNING_DBEAVER=1
         fi
         if [ "$SEL_14" -eq 1 ] && is_app_running "/Applications/MongoDB Compass.app"; then
             running_app_names+=("MongoDB Compass")
-            running_app_paths+=("/Applications/MongoDB Compass.app")
             WAS_RUNNING_COMPASS=1
         fi
         if [ "$SEL_15" -eq 1 ] && is_app_running "/Applications/Antigravity.app"; then
             running_app_names+=("Antigravity")
-            running_app_paths+=("/Applications/Antigravity.app")
             WAS_RUNNING_ANTIGRAVITY=1
         fi
         if [ "$SEL_16" -eq 1 ] && is_app_running "/Applications/Claude.app"; then
             running_app_names+=("Claude")
-            running_app_paths+=("/Applications/Claude.app")
             WAS_RUNNING_CLAUDE=1
         fi
         if [ "$SEL_17" -eq 1 ] && is_app_running "/Applications/Codex.app"; then
             running_app_names+=("Codex")
-            running_app_paths+=("/Applications/Codex.app")
             WAS_RUNNING_CODEX=1
         fi
         if [ "$SEL_18" -eq 1 ] && is_app_running "/Applications/Google Chrome.app"; then
             running_app_names+=("Google Chrome")
-            running_app_paths+=("/Applications/Google Chrome.app")
             WAS_RUNNING_CHROME=1
         fi
 
         if [ ${#running_app_names[@]} -gt 0 ]; then
-            echo -e "\n${YELLOW}⚠️  Warning: The following running application(s) need to be closed to proceed with update:${NC}"
+            echo -e "\n${YELLOW}⚠️  Warning: The following running application(s) will be closed (and reopened) during the update:${NC}"
             for app_n in "${running_app_names[@]}"; do
                 echo -e "${YELLOW}   - ${app_n}${NC}"
             done
-            echo -n -e "${YELLOW}Do you want to close them and continue? (y/N): ${NC}"
+            echo -e "${YELLOW}   Each stays open until its new version is downloaded and ready to swap in.${NC}"
+            echo -n -e "${YELLOW}Do you want to continue? (y/N): ${NC}"
             read -r response
             if [[ ! "$response" =~ ^[Yy]$ ]]; then
                 echo -e "\n${YELLOW}Installation cancelled.${NC}"
@@ -2515,12 +2580,8 @@ while true; do
                 read -r || exit 1
                 continue
             fi
-
-            # User confirmed: kill all running apps
-            echo -e "${BLUE}Closing running applications...${NC}"
-            for app_p in "${running_app_paths[@]}"; do
-                kill_app "$app_p"
-            done
+            # Nothing is closed yet: install_app_bundle closes each app right
+            # before swapping its bundle in.
         fi
 
         echo -e "\n${BLUE}Starting installation of $count selected tool(s)...${NC}\n"
