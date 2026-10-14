@@ -91,6 +91,7 @@ source ~/.zshrc
 - Python は `uv`（Astral製の高速なPythonパッケージ＆プロジェクトマネージャー）と一緒にインストールされます。
 - JDK は公式の Eclipse Temurin LTS リリースをインストールし、`JAVA_HOME` を自動設定します。
 - デスクトップアプリ（VSCode、Claude、OrbStack、MongoDB Compass、DBeaver、Google Chrome、Android Studio、Antigravity）は自動的にダウンロードされ、`/Applications` に配置されます。
+- 起動中のアプリはダウンロード中も使い続けられます。閉じられるのは新バージョンに差し替える瞬間だけで、その後自動で再起動されます。ダウンロードに失敗した場合は閉じられません。インストーラーを実行している*そのアプリ*（VSCode・Antigravity・Claude の内蔵ターミナルなど）は、閉じるとセッションごと終了してしまうため、警告を出してスキップします。そのアプリは Terminal.app など別のターミナルから更新してください。
 - Git は Apple 公式の `xcode-select --install` 経由でインストールされます。
 - **Global Packages**（項目 19）はツール本体ではなく、パッケージマネージャーが入れたものを更新します。導入済みのすべてのマネージャーが対象です。npm（古いグローバルを `@latest` で入れ直し。`npm`/`corepack` は Node.js 本体が管理するため対象外）、pnpm（`update -g --latest`）、Yarn Classic（`global upgrade --latest`）、Bun（`update --global`）、Homebrew（`update && upgrade`）、uv（`tool upgrade --all`）、pipx（`upgrade-all`）、RubyGems（`gem update`。macOS のシステム Ruby は除外）、Composer（`global update`）、cargo（`cargo-install-update` プラグインがある場合のみ `install-update -a`）。行には（安価に調べられる）npm と Homebrew の更新待ち件数が表示されます。**行で Enter を押すと、マネージャーごとの詳細**が確認できます。更新後は各マネージャーのキャッシュも掃除します（npm/Yarn `cache clean`、pnpm `store prune`、Bun `pm cache rm`、`brew cleanup`、uv `cache prune`、`gem cleanup`、Composer `clear-cache`）。ベストエフォートなので、掃除に失敗しても更新自体は失敗扱いになりません。
 - **更新のみ**の実行後はそのままメニューに戻ります。新規インストールの場合はセットアップの案内を読めるよう Enter を待ちます（エラーが出た実行も同様です）。
