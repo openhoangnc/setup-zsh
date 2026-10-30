@@ -1726,15 +1726,31 @@ install_gcloud() {
     # and only fetches the changed pieces. A gcloud we did not place (e.g. a
     # Homebrew cask, which blocks `components update`) is left alone and the
     # tarball goes into ~/.local instead.
+    local upgrading=0 keep_components=""
     if [[ -x "$sdk_root/bin/gcloud" ]]; then
         echo -e "${BLUE}Updating gcloud CLI to v${LATEST_GCLOUD} via components update...${NC}"
         if ! "$sdk_root/bin/gcloud" components update --quiet; then
             echo -e "${RED}Error: Failed to update the gcloud CLI.${NC}"
             return 1
         fi
-        write_gcloud_env
-        echo -e "${GREEN}✓ gcloud CLI v${LATEST_GCLOUD} updated successfully!${NC}"
-        return 0
+        # Judge the update by the VERSION file, not the exit status. gcloud
+        # 590.0.0 on macOS can never update itself: lib/surface/__init__.py
+        # bails out of any `components update` unless `properties` carries the
+        # _B_468088880_FIXED marker, and 590 split `properties` into a package
+        # that keeps the marker in properties/validators.py without re-exporting
+        # it. The command prints "Update done!" and exits 0 with nothing touched.
+        local now
+        now=$(detect_gcloud)
+        if ! is_outdated "$now" "$LATEST_GCLOUD"; then
+            write_gcloud_env
+            echo -e "${GREEN}✓ gcloud CLI v${now} updated successfully!${NC}"
+            return 0
+        fi
+        echo -e "${YELLOW}components update left the CLI at v${now}; reinstalling v${LATEST_GCLOUD} from the release tarball instead.${NC}"
+        upgrading=1
+        # Remembered so components beyond the tarball's defaults
+        # (gke-gcloud-auth-plugin, kubectl, ...) can be put back afterwards.
+        keep_components=$("$sdk_root/bin/gcloud" components list --only-local-state --format='value(id)' 2>/dev/null)
     fi
 
     echo -e "${BLUE}Installing gcloud CLI v${LATEST_GCLOUD}...${NC}"
@@ -1760,13 +1776,30 @@ install_gcloud() {
 
     echo "Installing to ~/.local/google-cloud-sdk..."
     mkdir -p "$HOME/.local"
-    rm -rf "$sdk_root"
-    if ! mv "$temp_extract_dir/google-cloud-sdk" "$sdk_root"; then
-        echo -e "${RED}Error: Failed to move the gcloud CLI into ~/.local/google-cloud-sdk.${NC}"
+    # Move a working SDK aside instead of deleting it up front, so a failed move
+    # of the new one can put it back.
+    local old_root="$HOME/.local/.google-cloud-sdk.old"
+    rm -rf "$old_root"
+    if [[ -e "$sdk_root" ]] && ! mv "$sdk_root" "$old_root"; then
+        echo -e "${RED}Error: Failed to move the existing ~/.local/google-cloud-sdk aside.${NC}"
         rm -f "$temp_tar"
         rm -rf "$temp_extract_dir"
         return 1
     fi
+    if ! mv "$temp_extract_dir/google-cloud-sdk" "$sdk_root"; then
+        echo -e "${RED}Error: Failed to move the gcloud CLI into ~/.local/google-cloud-sdk.${NC}"
+        if [[ -e "$old_root" ]]; then
+            rm -rf "$sdk_root"
+            mv "$old_root" "$sdk_root"
+        fi
+        rm -f "$temp_tar"
+        rm -rf "$temp_extract_dir"
+        return 1
+    fi
+    # The SDK root's own `properties` holds installation-wide settings (user
+    # config lives in ~/.config/gcloud and is untouched); keep it across the swap.
+    [[ -f "$old_root/properties" ]] && cp "$old_root/properties" "$sdk_root/properties"
+    rm -rf "$old_root"
 
     rm -f "$temp_tar"
     rm -rf "$temp_extract_dir"
@@ -1780,6 +1813,24 @@ install_gcloud() {
     fi
 
     write_gcloud_env
+
+    if [ "$upgrading" -eq 1 ]; then
+        local have missing="" c
+        have=$("$sdk_root/bin/gcloud" components list --only-local-state --format='value(id)' 2>/dev/null)
+        for c in $keep_components; do
+            echo "$have" | grep -qxF "$c" || missing="$missing $c"
+        done
+        if [[ -n "$missing" ]]; then
+            echo "Restoring components:${missing}..."
+            # $missing is unquoted on purpose: one argument per component id.
+            if ! "$sdk_root/bin/gcloud" components install --quiet $missing; then
+                echo -e "${RED}Error: gcloud CLI v${LATEST_GCLOUD} is installed, but these components could not be restored:${missing}. Run 'gcloud components install${missing}'.${NC}"
+                return 1
+            fi
+        fi
+        echo -e "${GREEN}✓ gcloud CLI v${LATEST_GCLOUD} updated successfully!${NC}"
+        return 0
+    fi
 
     echo -e "${GREEN}✓ gcloud CLI v${LATEST_GCLOUD} installed to ~/.local/google-cloud-sdk!${NC}"
     echo -e "${YELLOW}Run 'gcloud init' to authenticate and pick a project.${NC}"
