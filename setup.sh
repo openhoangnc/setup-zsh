@@ -171,6 +171,12 @@ if [[ -d "/Applications/Visual Studio Code.app/Contents/Resources/app/bin" ]] &&
 	_update_env_block "VSCode" "export PATH=\"/Applications/Visual Studio Code.app/Contents/Resources/app/bin:\$PATH\""
 fi
 
+# Zed (install-dev-tool links its CLI as ~/.local/bin/zed)
+if [[ -x "$HOME/.local/bin/zed" ]] && _needs_env_block "Zed"; then
+	echo -e "${BLUE}Detected Zed CLI at ~/.local/bin/zed, adding to PATH...${NC}"
+	_update_env_block "Zed" "export PATH=\"\$HOME/.local/bin:\$PATH\""
+fi
+
 # Python aliases & uv
 if (command -v python3 &>/dev/null || command -v uv &>/dev/null || [[ -x "$HOME/.local/bin/uv" ]]) && _needs_env_block "Python"; then
 	echo -e "${BLUE}Detected Python3 / uv, adding PATH and aliases...${NC}"

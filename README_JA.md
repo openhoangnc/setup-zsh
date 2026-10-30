@@ -33,7 +33,7 @@ source ~/.zshrc
 - **Auto-CD（自動ディレクトリ移動）** — ディレクトリパスを入力してEnterを押すだけで移動できます。`cd` と入力する必要はありません。
 - **カラフルなファイル一覧表示** — ファイルとフォルダが色分けされ、ライトモード・ダークモードのどちらでも見やすくなります。
 - **最適なデフォルト設定** — 大文字・小文字を区別しないTab補全、より賢い履歴（重複排除）、最大10万件のコマンド履歴保存、そして日常的なキーがそのまま使えます（Home / End / Fn+Delete / Option+矢印キーでの単語ジャンプ）。
-- **開発ツールインストーラー (`install-dev-tool`)** — Bun、Go、Homebrew、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、ChatGPT、gcloud CLI、Git、OrbStack、Android Studio、VSCode、DBX、MongoDB Compass、Antigravity、Claude、Google Chrome をインストールできるインタラクティブメニュー。さらに **Global Packages** 項目で、パッケージマネージャーが入れたパッケージ（npm、pnpm、Yarn、Bun、Homebrew、uv、pipx、RubyGems、Composer、cargo のうち導入済みのもの）も更新できます。矢印キーで選択できます。
+- **開発ツールインストーラー (`install-dev-tool`)** — Bun、Go、Homebrew、Node.js、Python & uv、Rust、JDK (Eclipse Temurin LTS)、ChatGPT、gcloud CLI、Git、OrbStack、Android Studio、VSCode、Zed、DBX、MongoDB Compass、Antigravity、Claude、Google Chrome をインストールできるインタラクティブメニュー。さらに **Global Packages** 項目で、パッケージマネージャーが入れたパッケージ（npm、pnpm、Yarn、Bun、Homebrew、uv、pipx、RubyGems、Composer、cargo のうち導入済みのもの）も更新できます。矢印キーで選択できます。
 - **Macクリーンアップ (`cdm`)** — 筆者の独立ツール [**CleanDevMac**](https://github.com/cleandevmac/cdm)（このリポジトリから生まれました）をインストールします。再生成可能な開発者キャッシュやビルド成果物（Xcode、Go、Node/npm/pnpm/yarn、Gradle、Maven、Cargo、Python、Homebrew、Playwright など）からディスク容量を回収し、Electron／ブラウザ／アプリのキャッシュをクリアし、リポジトリごとにまとめられたプロジェクトのゴミを一掃し、Docker/Podman の空き容量を回収し、アンインストール済みアプリの残存データを洗い出します — 項目ごとの確認なしに削除することは決してありません。
 
 ---
@@ -76,7 +76,7 @@ source ~/.zshrc
 ![install-dev-tool](install-dev-tool.png)
 
 - **移動**: **上 / 下 / 左 / 右** 矢印キーでカーソル（`❯`）を移動。
-- **ツール選択**: **スペース** または **Enter** でチェック/解除（`[ ]` ↔ `[✓]`）。番号の入力でも選択できます（10–19 の項目は2桁を素早く入力）。**Global Packages** の行では **Enter** はマネージャーごとの詳細表示になります（選択は **スペース** か `19`）。
+- **ツール選択**: **スペース** または **Enter** でチェック/解除（`[ ]` ↔ `[✓]`）。番号の入力でも選択できます（10–20 の項目は2桁を素早く入力）。**Global Packages** の行では **Enter** はマネージャーごとの詳細表示になります（選択は **スペース** か `20`）。
 - **アクション（最下部1行に集約）**:
   - **インストール**: `[I] Install` に移動して **Enter** を押す（または `I` と入力）。
   - **全選択**: `[A] Toggle All` に移動して **Enter** を押す（または `A` と入力）。
@@ -90,10 +90,10 @@ source ~/.zshrc
 - Homebrew は公式スクリプト (`https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`) 経由でインストールされ、`shellenv` が自動設定されます。
 - Python は `uv`（Astral製の高速なPythonパッケージ＆プロジェクトマネージャー）と一緒にインストールされます。
 - JDK は公式の Eclipse Temurin LTS リリースをインストールし、`JAVA_HOME` を自動設定します。
-- デスクトップアプリ（VSCode、Claude、ChatGPT、OrbStack、MongoDB Compass、DBX、Google Chrome、Android Studio、Antigravity）は自動的にダウンロードされ、`/Applications` に配置されます。
+- デスクトップアプリ（VSCode、Zed、Claude、ChatGPT、OrbStack、MongoDB Compass、DBX、Google Chrome、Android Studio、Antigravity）は自動的にダウンロードされ、`/Applications` に配置されます。Zed の `zed` コマンドは `~/.local/bin/zed` にリンクされるため、管理者権限は不要です。
 - 起動中のアプリはダウンロード中も使い続けられます。閉じられるのは新バージョンに差し替える瞬間だけで、その後自動で再起動されます。ダウンロードに失敗した場合は閉じられません。インストーラーを実行している*そのアプリ*（VSCode・Antigravity・Claude の内蔵ターミナルなど）は、閉じるとセッションごと終了してしまうため、警告を出してスキップします。そのアプリは Terminal.app など別のターミナルから更新してください。
 - Git は Apple 公式の `xcode-select --install` 経由でインストールされます。
-- **Global Packages**（項目 19）はツール本体ではなく、パッケージマネージャーが入れたものを更新します。導入済みのすべてのマネージャーが対象です。npm（古いグローバルを `@latest` で入れ直し。`npm`/`corepack` は Node.js 本体が管理するため対象外）、pnpm（`update -g --latest`）、Yarn Classic（`global upgrade --latest`）、Bun（`update --global`）、Homebrew（`update && upgrade`）、uv（`tool upgrade --all`）、pipx（`upgrade-all`）、RubyGems（`gem update`。macOS のシステム Ruby は除外）、Composer（`global update`）、cargo（`cargo-install-update` プラグインがある場合のみ `install-update -a`）。行には（安価に調べられる）npm と Homebrew の更新待ち件数が表示されます。**行で Enter を押すと、マネージャーごとの詳細**が確認できます。更新後は各マネージャーのキャッシュも掃除します（npm/Yarn `cache clean`、pnpm `store prune`、Bun `pm cache rm`、`brew cleanup`、uv `cache prune`、`gem cleanup`、Composer `clear-cache`）。ベストエフォートなので、掃除に失敗しても更新自体は失敗扱いになりません。
+- **Global Packages**（項目 20）はツール本体ではなく、パッケージマネージャーが入れたものを更新します。導入済みのすべてのマネージャーが対象です。npm（古いグローバルを `@latest` で入れ直し。`npm`/`corepack` は Node.js 本体が管理するため対象外）、pnpm（`update -g --latest`）、Yarn Classic（`global upgrade --latest`）、Bun（`update --global`）、Homebrew（`update && upgrade`）、uv（`tool upgrade --all`）、pipx（`upgrade-all`）、RubyGems（`gem update`。macOS のシステム Ruby は除外）、Composer（`global update`）、cargo（`cargo-install-update` プラグインがある場合のみ `install-update -a`）。行には（安価に調べられる）npm と Homebrew の更新待ち件数が表示されます。**行で Enter を押すと、マネージャーごとの詳細**が確認できます。更新後は各マネージャーのキャッシュも掃除します（npm/Yarn `cache clean`、pnpm `store prune`、Bun `pm cache rm`、`brew cleanup`、uv `cache prune`、`gem cleanup`、Composer `clear-cache`）。ベストエフォートなので、掃除に失敗しても更新自体は失敗扱いになりません。
 - **更新のみ**の実行後はそのままメニューに戻ります。新規インストールの場合はセットアップの案内を読めるよう Enter を待ちます（エラーが出た実行も同様です）。
 - インストーラーは起動時に自動で最新バージョンを確認します。
 

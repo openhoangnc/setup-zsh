@@ -110,16 +110,18 @@ version-probe subshell, the `LATEST_*` read and the normalization loop, `detect_
 `refresh_installed_tools`, the menu row, `toggle_all` / `select_outdated` /
 `has_outdated_tools` / the two `count` loops (all `{1..N}` ranges), `installed_version_for`,
 the `SEL_*` init and reset lines, `max_cursor` and the UP/DOWN/LEFT/RIGHT and SPACE/ENTER arithmetic, the
-two-digit number-key branch, the up-to-date `confirm_reinstall` guard, and the numbered
-`install_*` call inside the logged batch. Inserting in the middle renumbers every later
-item; appending at the end does not.
+two-digit number-key branches (`1` then a digit for 10–19, `2` then `0` for 20), the
+up-to-date `confirm_reinstall` guard, for a GUI app the host-app `case` (and its `{10..N}`
+range) plus the `WAS_RUNNING_*` init and running-app check, and the numbered `install_*`
+call inside the logged batch. Inserting in the middle renumbers every later item; appending
+at the end does not. A 21st row needs a wider number-key branch for `2`.
 
 Each batch truncates `~/.zsh/setup-zsh/install.log` and `tee`s into it, so only the last
 run is kept. After the batch the menu returns on its own unless there is something to
 read first — a first-time install (decided by `installed_version_for`, which reports the
 row's currently installed version) or an error found in that log.
 
-Row 19 ("Global Packages") updates the *packages* the managers installed rather than the
+Row 20 ("Global Packages") updates the *packages* the managers installed rather than the
 managers themselves. The supported managers are listed in `GLOBAL_PM_ORDER`; each is
 driven by a triple of `<pm>_bin` (resolver, applies guards — Yarn must be classic, `gem`
 must not be the system Ruby, `cargo` needs the `cargo-install-update` plugin),
@@ -139,8 +141,8 @@ failed — never "nothing to update". After the upgrade loop, `update_global_pac
 `composer clear-cache`, ...): it calls `pm_cleanup_<pm>` for every manager that defines one
 (guarded by `declare -f`, so pipx/cargo are skipped), and cleanup failures only warn — they
 never flip `$failed`, so they can't force the post-batch pause. The full per-manager
-breakdown is computed lazily by `show_globals_details`, opened with **Enter** on row 19
-(Space and the `19` key still toggle selection — the `SPACE|ENTER` case special-cases
+breakdown is computed lazily by `show_globals_details`, opened with **Enter** on row 20
+(Space and the `20` key still toggle selection — the `SPACE|ENTER` case special-cases
 `action = ENTER` on that row).
 
 ### `bin/git-sync`
