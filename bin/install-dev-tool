@@ -739,11 +739,15 @@ format_status() {
         echo -e "${GREEN}[Installed: v$installed]${NC} ${YELLOW}(update check failed)${NC}"
     elif [[ "$installed" == "$latest" ]]; then
         echo -e "${GREEN}[Installed: v$installed (Latest)]${NC}"
+    elif [[ "$installed" == *[!0-9.]* ]]; then
+        # A pre-release on disk (is_outdated counts it as outdated). The release
+        # can have a lower number, so "Upgrade" would read wrong.
+        echo -e "${YELLOW}[Installed: v$installed (pre-release) -> Release v$latest]${NC}"
     elif is_outdated "$installed" "$latest"; then
         echo -e "${YELLOW}[Installed: v$installed -> Upgrade to v$latest]${NC}"
     else
-        # Installed is ahead of the version we probed (e.g. a prerelease, or the
-        # upstream release landed before the Homebrew/API feed caught up). Never
+        # Installed is ahead of the version we probed (e.g. the upstream release
+        # landed before its feed caught up). Never
         # render that as an upgrade — is_outdated would refuse the "upgrade"
         # anyway, and "-> Upgrade to v1.4.0" from v1.4.2 reads as a bug.
         echo -e "${GREEN}[Installed: v$installed (newer than latest v$latest)]${NC}"
@@ -900,7 +904,13 @@ is_outdated() {
     # strictly newer than installed. An installed version that is ahead of the
     # reported latest (e.g. upstream released before the Homebrew formula API
     # caught up) is NOT outdated, so we never suggest a downgrade.
+    # The one exception is an installed pre-release: 27.0.0-alpha.0.0.0 sorts
+    # above the final 26.13.0, yet the only builds we offer are final releases
+    # (anything else is normalized to Unknown), so an install that isn't plain
+    # digits and dots is outdated against any known release — that is how a
+    # pre-release put on disk by an earlier probe bug gets replaced.
     [ -n "$1" ] && [ -n "$2" ] && [ "$2" != "Unknown" ] && [ "$1" != "$2" ] || return 1
+    case "$1" in *[!0-9.]*) return 0 ;; esac
     [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" = "$1" ]
 }
 

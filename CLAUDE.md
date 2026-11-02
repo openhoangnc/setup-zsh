@@ -113,7 +113,10 @@ into `Unknown`, which `require_latest` refuses — so a new probe that leaks a p
 to the probed version (Bun) or channel (rustup `stable`).
 
 `is_outdated` is the single comparison rule: an install *newer* than the reported latest is
-never treated as outdated, so the tool never suggests a downgrade.
+never treated as outdated, so the tool never suggests a downgrade. The exception is an
+installed pre-release (anything not digits and dots, e.g. `27.0.0-alpha.0.0.0`): it is outdated
+against any known release even when its number is higher, and `format_status` labels it
+`(pre-release) -> Release vX`.
 
 Adding a tool touches roughly ten places, all of which must agree: the header comment, a
 version-probe subshell, the `LATEST_*` read and the normalization loop, `detect_*`,
