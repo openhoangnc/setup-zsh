@@ -95,7 +95,7 @@ source ~/.zshrc
 - Git 通过 Apple 官方的 `xcode-select --install` 安装。
 - **Global Packages**（第 20 项）更新的是包管理器装的包，而不是管理器本身，并覆盖你已安装的每个管理器：npm（过时全局包以 `@latest` 重装；`npm`/`corepack` 交由 Node.js 发行包管理）、pnpm（`update -g --latest`）、Yarn Classic（`global upgrade --latest`）、Bun（`update --global`）、Homebrew（`update && upgrade`）、uv（`tool upgrade --all`）、pipx（`upgrade-all`）、RubyGems（`gem update`，跳过 macOS 系统 Ruby）、Composer（`global update`）以及 cargo（仅当存在 `cargo-install-update` 插件时 `install-update -a`）。该行显示 npm 和 Homebrew 的待更新数量（这两者查询开销小）；**在该行按回车可查看各管理器的完整明细**。更新完成后还会清理各管理器的缓存（npm/Yarn `cache clean`、pnpm `store prune`、Bun `pm cache rm`、`brew cleanup`、uv `cache prune`、`gem cleanup`、Composer `clear-cache`）——尽力而为，清理出问题不会让更新失败。
 - 只做**更新**的运行会直接回到菜单；首次安装则会等待回车，以便阅读安装提示——运行中报错时同样会等待。
-- 安装器启动时会自动检查最新版本。
+- 安装器启动时会自动检查最新版本，且只提供正式版：即使厂商的更新源把 alpha、beta、RC 或 canary 版本排在最前面，也会被跳过。
 
 ### 5. Mac 清理工具 (`cdm`)
 

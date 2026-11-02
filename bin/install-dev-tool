@@ -250,6 +250,28 @@ refresh_global_outdated() {
     rm -rf "$dir"
 }
 
+gh_release_versions() {
+    # gh_release_versions <owner/repo> <tag-prefix> — the repo's final release
+    # versions (X.Y.Z, prefix stripped), highest first. Tags with anything after
+    # the numbers (-beta.1, -rc.2, -alpha.0) are dropped: projects don't reliably
+    # flag those as prereleases, and /releases/latest has redirected to one.
+    # Read from releases.atom, which unlike api.github.com is not rate-limited to
+    # 60 requests/hour; the API is the fallback, also when the feed's 10 entries
+    # hold no final release. Only the entries' own href="…/releases/tag/…" links
+    # are matched (a literal quote): tag links quoted inside release notes are
+    # HTML-escaped to &quot; by the feed, so other repos' tags can't sneak in.
+    local repo="$1" prefix="$2" pattern versions
+    pattern="s/^${prefix}\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$/\1/p"
+    versions=$(curl -s --max-time 10 "https://github.com/${repo}/releases.atom" \
+        | grep -o "href=\"https://github.com/${repo}/releases/tag/[^\"]*\"" \
+        | sed 's#.*/tag/##; s/"$//' | sed -n "$pattern")
+    if [ -z "$versions" ]; then
+        versions=$(curl -s --max-time 10 "https://api.github.com/repos/${repo}/releases?per_page=100" \
+            | grep -o '"tag_name": *"[^"]*"' | cut -d'"' -f4 | sed -n "$pattern")
+    fi
+    [ -n "$versions" ] && echo "$versions" | sort -Vr
+}
+
 TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 
 # Launch parallel version checks in the background (Git is system-managed, so no check needed)
@@ -259,13 +281,32 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 ) &
 
 (
-    LATEST=$(curl -s --max-time 10 https://nodejs.org/dist/index.tab | awk 'NR==2 {print $1}' | sed 's/^v//' || echo "Unknown")
+    # index.tab lists every build nodejs.org publishes, newest first, and that
+    # includes pre-releases: v27.0.0-alpha.0.0.0 sat above v26.13.0, so taking
+    # the first row installed an alpha. Take the first row that is a final
+    # vX.Y.Z *and* lists the macOS tarball install_node downloads (column 3 is
+    # the build list; that alpha had no osx-x64-tar at all).
+    LATEST=$(curl -s --max-time 10 https://nodejs.org/dist/index.tab | awk -F'\t' -v want="osx-${NODE_ARCH}-tar" '
+        NR > 1 && $1 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ && ("," $3 ",") ~ ("," want ",") { sub(/^v/, "", $1); print $1; exit }')
     echo "$LATEST" > "$TEMP_VER_DIR/node"
 ) &
 
 (
-    LATEST=$(curl -s --max-time 10 "https://cdn-updates.orbstack.dev/${ORB_ARCH}/appcast.new.xml" | grep -o '<sparkle:shortVersionString>[^<]*' | head -n 1 | sed 's/<sparkle:shortVersionString>//' || echo "Unknown")
-    echo "$LATEST" > "$TEMP_VER_DIR/orb"
+    # The appcast lists each release once per Sparkle channel — stable, beta,
+    # canary — so the first <item> is stable only because of today's ordering;
+    # a canary build listed first would be picked and installed. Keep items on
+    # the stable channel (or none, Sparkle's default), take the highest version,
+    # and hand that item's DMG to install_orb so the build installed is the one
+    # shown. The enclosure directly under <item> is the DMG; the ones under
+    # <sparkle:deltas> are .delta patches, hence the .dmg filter.
+    PICK=$(curl -s --max-time 10 "https://cdn-updates.orbstack.dev/${ORB_ARCH}/appcast.new.xml" | awk '
+        /<item>/ { v = ""; u = ""; c = "" }
+        /<sparkle:channel>/ { c = $0; sub(/.*<sparkle:channel>/, "", c); sub(/<.*/, "", c) }
+        /<sparkle:shortVersionString>/ { v = $0; sub(/.*<sparkle:shortVersionString>/, "", v); sub(/<.*/, "", v) }
+        /<enclosure url="[^"]*\.dmg"/ && u == "" { u = $0; sub(/.*<enclosure url="/, "", u); sub(/".*/, "", u) }
+        /<\/item>/ { if (v != "" && u != "" && (c == "" || c == "stable")) print v, u }' | sort -k1,1V | tail -n 1)
+    echo "$PICK" | cut -d' ' -f1 > "$TEMP_VER_DIR/orb"
+    echo "$PICK" | cut -s -d' ' -f2 > "$TEMP_VER_DIR/orb_url"
 ) &
 
 (
@@ -293,10 +334,7 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     # list itself rather than the brew formula — sourcing "latest" from a
     # different place than we download from can only ever disagree. The tags are
     # bare versions (0.12.10), exactly the string the download URL needs.
-    LATEST=$(curl -s --max-time 10 https://github.com/astral-sh/uv/releases.atom | grep -o 'releases/tag/[0-9][^"<]*' | head -n 1 | sed 's#releases/tag/##')
-    if [ -z "$LATEST" ]; then
-        LATEST=$(curl -s --max-time 10 https://api.github.com/repos/astral-sh/uv/releases/latest | grep -o '"tag_name": "[^"]*"' | head -n 1 | cut -d'"' -f4)
-    fi
+    LATEST=$(gh_release_versions astral-sh/uv "" | head -n 1)
     echo "$LATEST" > "$TEMP_VER_DIR/uv"
 ) &
 
@@ -331,15 +369,20 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
 
 (
     # install_dbx builds a github.com/t8y2/dbx/releases/download/v<version>/ URL,
-    # so the version must be one that actually has assets. The repo also tags
-    # non-app packages (agents-v…, packages-v…) and pushes the v… tag before the
-    # release build has uploaded its DMGs, so neither the atom feed nor the tag
-    # list is safe here. /releases/latest redirects only to the newest published,
-    # non-prerelease release and needs no API token; the API is the fallback.
-    LATEST=$(curl -sI --max-time 10 https://github.com/t8y2/dbx/releases/latest | grep -i "^location:" | grep -o "/tag/v[0-9][^[:space:]]*" | sed "s#/tag/v##")
-    if [ -z "$LATEST" ]; then
-        LATEST=$(curl -s --max-time 10 https://api.github.com/repos/t8y2/dbx/releases/latest | grep -o '"tag_name": "[^"]*"' | head -n 1 | cut -d'"' -f4 | sed 's/^v//')
-    fi
+    # so the version must be a final release that actually has assets. No single
+    # GitHub signal guarantees that here: the repo also tags non-app packages
+    # (agents-v…, packages-v…), pushes the v… tag before the release build has
+    # uploaded its DMGs, and publishes betas that are not always flagged as
+    # prereleases — /releases/latest redirected to v0.6.63-beta.20261101.3. So
+    # take the final vX.Y.Z tags, newest first, and keep the first whose DMG for
+    # this arch answers a HEAD (302 to the CDN when present, 404 when not).
+    LATEST=""
+    for ver in $(gh_release_versions t8y2/dbx v | head -n 5); do
+        if curl -sfI --max-time 10 -o /dev/null "https://github.com/t8y2/dbx/releases/download/v${ver}/DBX_${ver}_${DBX_ARCH}.dmg"; then
+            LATEST="$ver"
+            break
+        fi
+    done
     echo "$LATEST" > "$TEMP_VER_DIR/dbx"
 ) &
 
@@ -394,14 +437,18 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     # enclosure; the <sparkle:deltas> under it are .delta files, hence the .zip
     # filter. Items are per-arch (arm64 only today: there is no Intel build), so
     # match the arch in the file name, then take the highest version rather
-    # than trusting feed order. The URL goes to install_chatgpt as-is.
+    # than trusting feed order. The URL goes to install_chatgpt as-is. The feed
+    # carries no <sparkle:channel> today; items that gain one other than stable
+    # are beta builds the app only offers on opt-in, so they are skipped (same
+    # rule as OrbStack, whose feed does mix channels).
     cg_arch="arm64"
     [ "$ARCH" = "x86_64" ] && cg_arch="x64"
     PICK=$(curl -s --max-time 10 https://persistent.oaistatic.com/codex-app-prod/appcast.xml | awk -v arch="$cg_arch" '
-        /<item>/ { v = ""; u = "" }
+        /<item>/ { v = ""; u = ""; c = "" }
+        /<sparkle:channel>/ { c = $0; sub(/.*<sparkle:channel>/, "", c); sub(/<.*/, "", c) }
         /<sparkle:shortVersionString>/ { v = $0; sub(/.*<sparkle:shortVersionString>/, "", v); sub(/<.*/, "", v) }
         /<enclosure url="[^"]*\.zip"/ && u == "" { u = $0; sub(/.*<enclosure url="/, "", u); sub(/".*/, "", u) }
-        /<\/item>/ { if (v != "" && u ~ ("-darwin-" arch "-")) print v, u }' | sort -k1,1V | tail -n 1)
+        /<\/item>/ { if (v != "" && u ~ ("-darwin-" arch "-") && (c == "" || c == "stable")) print v, u }' | sort -k1,1V | tail -n 1)
     LATEST=$(echo "$PICK" | cut -d' ' -f1)
     echo "$PICK" | cut -s -d' ' -f2 > "$TEMP_VER_DIR/chatgpt_url"
     echo "$LATEST" > "$TEMP_VER_DIR/chatgpt"
@@ -443,11 +490,9 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     # what we just installed. Use the releases.atom feed rather than
     # api.github.com, which rate-limits unauthenticated callers to 60/hour.
     # The feed also carries non-release tags (consolidation-step-*), hence the
-    # bun-v<digit> filter instead of taking the first entry.
-    LATEST=$(curl -s --max-time 10 https://github.com/oven-sh/bun/releases.atom | grep -o 'releases/tag/bun-v[0-9][^"<]*' | head -n 1 | sed 's#releases/tag/bun-v##')
-    if [ -z "$LATEST" ]; then
-        LATEST=$(curl -s --max-time 10 https://api.github.com/repos/oven-sh/bun/releases/latest | grep -o '"tag_name": "bun-v[^"]*"' | head -n 1 | cut -d'"' -f4 | sed 's/^bun-v//')
-    fi
+    # bun-v prefix instead of taking the first entry. install_bun passes this
+    # tag to bun.sh/install, so the menu and the install agree.
+    LATEST=$(gh_release_versions oven-sh/bun bun-v | head -n 1)
     echo "$LATEST" > "$TEMP_VER_DIR/bun"
 ) &
 
@@ -457,10 +502,7 @@ TEMP_VER_DIR=$(mktemp -d /tmp/setup-zsh-versions.XXXXXX)
     # feed served by github.com: unlike api.github.com it is not subject to the
     # 60-requests/hour unauthenticated rate limit that made this the first check
     # to intermittently fail. Fall back to the API only if the feed yields nothing.
-    LATEST=$(curl -s --max-time 10 https://github.com/Homebrew/brew/releases.atom | grep -o 'releases/tag/[^"<]*' | head -n 1 | sed 's#releases/tag/##; s/^v//')
-    if [ -z "$LATEST" ]; then
-        LATEST=$(curl -s --max-time 10 https://api.github.com/repos/Homebrew/brew/releases/latest | grep -o '"tag_name": "[^"]*"' | head -n 1 | cut -d'"' -f4 | sed 's/^v//')
-    fi
+    LATEST=$(gh_release_versions Homebrew/brew "" | head -n 1)
     echo "$LATEST" > "$TEMP_VER_DIR/homebrew"
 ) &
 
@@ -492,6 +534,7 @@ LATEST_BUN=$(cat "$TEMP_VER_DIR/bun" 2>/dev/null || echo "Unknown")
 LATEST_GO=$(cat "$TEMP_VER_DIR/go" 2>/dev/null || echo "Unknown")
 LATEST_NODE=$(cat "$TEMP_VER_DIR/node" 2>/dev/null || echo "Unknown")
 LATEST_ORB=$(cat "$TEMP_VER_DIR/orb" 2>/dev/null || echo "Unknown")
+ORB_URL=$(cat "$TEMP_VER_DIR/orb_url" 2>/dev/null)
 LATEST_VSCODE=$(cat "$TEMP_VER_DIR/vscode" 2>/dev/null || echo "Unknown")
 LATEST_ZED=$(cat "$TEMP_VER_DIR/zed" 2>/dev/null || echo "Unknown")
 ZED_URL=$(cat "$TEMP_VER_DIR/zed_url" 2>/dev/null)
@@ -515,14 +558,18 @@ read_global_checks "$TEMP_VER_DIR"
 rm -rf "$TEMP_VER_DIR"
 
 # The curl|grep pipelines above yield an empty string (not "Unknown") when the
-# network or an API fails — normalize so empty versions never look like upgrades
+# network or an API fails — normalize so empty versions never look like upgrades.
+# Anything that is not a plain dotted version (27.0.0-alpha.0.0.0, 1.5.0-rc.1,
+# 3.15.0b2, two lines from a feed that changed shape) is a pre-release or junk a
+# probe let through; it becomes Unknown too, so require_latest refuses it and
+# only final releases are ever installed, whatever a vendor feed starts listing.
 for v in LATEST_BUN LATEST_GO LATEST_NODE LATEST_ORB LATEST_VSCODE LATEST_PYTHON \
          LATEST_UV LATEST_JDK LATEST_CLAUDE LATEST_RUST LATEST_COMPASS LATEST_DBX \
          LATEST_CHROME LATEST_ANDROID_STUDIO LATEST_CHATGPT LATEST_ANTIGRAVITY LATEST_GCLOUD \
          LATEST_HOMEBREW LATEST_ZED; do
-    if [ -z "$(eval echo "\$$v")" ]; then
-        eval "$v=Unknown"
-    fi
+    case "$(eval echo "\"\$$v\"")" in
+        ''|*[!0-9.]*) eval "$v=Unknown" ;;
+    esac
 done
 
 # Detection helper functions
@@ -998,8 +1045,11 @@ install_app_bundle() {
 }
 
 install_bun() {
+    require_latest "Bun" "$LATEST_BUN" || return 1
     echo -e "${BLUE}Installing Bun v${LATEST_BUN}...${NC}"
-    if ! curl -fsSL https://bun.sh/install | bash; then
+    # Pin the tag: with no argument bun.sh/install takes whatever GitHub marks
+    # "latest", which need not be the final release the menu showed.
+    if ! curl -fsSL https://bun.sh/install | bash -s "bun-v${LATEST_BUN}"; then
         echo -e "${RED}Error: Failed to install Bun.${NC}"
         return 1
     fi
@@ -1161,9 +1211,11 @@ install_node() {
 }
 
 install_orb() {
+    require_latest "OrbStack" "$LATEST_ORB" || return 1
     echo -e "${BLUE}Installing OrbStack v${LATEST_ORB}...${NC}"
-    local download_url
-    download_url=$(curl -s --max-time 10 "https://cdn-updates.orbstack.dev/${ORB_ARCH}/appcast.new.xml" | grep -o 'enclosure url="[^"]*"' | head -n 1 | cut -d'"' -f2 || echo "")
+    # The DMG of the stable appcast item the version probe picked — re-reading
+    # the feed here and taking its first enclosure could land on a beta/canary.
+    local download_url="$ORB_URL"
     if [[ -z "$download_url" ]]; then
         echo -e "${RED}Error: Failed to resolve OrbStack download URL.${NC}"
         return 1
@@ -1478,14 +1530,16 @@ install_rust() {
     echo -e "${BLUE}Installing/Upgrading Rust v${LATEST_RUST}...${NC}"
     
     if [[ -x "$HOME/.cargo/bin/rustup" ]]; then
+        # Only the stable toolchain: a bare `rustup update` also moves any
+        # nightly/beta toolchain, and the row tracks stable's version.
         echo "Updating Rust via rustup..."
-        if ! "$HOME/.cargo/bin/rustup" update; then
+        if ! "$HOME/.cargo/bin/rustup" update stable; then
             echo -e "${RED}Error: Failed to update Rust.${NC}"
             return 1
         fi
     else
         echo "Running official rustup installer..."
-        if ! curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path; then
+        if ! curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain stable; then
             echo -e "${RED}Error: Failed to install Rust via rustup.${NC}"
             return 1
         fi

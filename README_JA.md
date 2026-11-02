@@ -95,7 +95,7 @@ source ~/.zshrc
 - Git は Apple 公式の `xcode-select --install` 経由でインストールされます。
 - **Global Packages**（項目 20）はツール本体ではなく、パッケージマネージャーが入れたものを更新します。導入済みのすべてのマネージャーが対象です。npm（古いグローバルを `@latest` で入れ直し。`npm`/`corepack` は Node.js 本体が管理するため対象外）、pnpm（`update -g --latest`）、Yarn Classic（`global upgrade --latest`）、Bun（`update --global`）、Homebrew（`update && upgrade`）、uv（`tool upgrade --all`）、pipx（`upgrade-all`）、RubyGems（`gem update`。macOS のシステム Ruby は除外）、Composer（`global update`）、cargo（`cargo-install-update` プラグインがある場合のみ `install-update -a`）。行には（安価に調べられる）npm と Homebrew の更新待ち件数が表示されます。**行で Enter を押すと、マネージャーごとの詳細**が確認できます。更新後は各マネージャーのキャッシュも掃除します（npm/Yarn `cache clean`、pnpm `store prune`、Bun `pm cache rm`、`brew cleanup`、uv `cache prune`、`gem cleanup`、Composer `clear-cache`）。ベストエフォートなので、掃除に失敗しても更新自体は失敗扱いになりません。
 - **更新のみ**の実行後はそのままメニューに戻ります。新規インストールの場合はセットアップの案内を読めるよう Enter を待ちます（エラーが出た実行も同様です）。
-- インストーラーは起動時に自動で最新バージョンを確認します。
+- インストーラーは起動時に自動で最新バージョンを確認します。対象は正式リリースのみで、配布元のフィードが先頭に載せていても alpha・beta・RC・canary 版は選ばれません。
 
 ### 5. Macクリーンアップ (`cdm`)
 

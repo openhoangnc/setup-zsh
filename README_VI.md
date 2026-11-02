@@ -95,7 +95,7 @@ Chạy `install-dev-tool` để mở menu tương tác.
 - Git được cài qua công cụ chính thức của Apple (`xcode-select --install`).
 - **Global Packages** (mục 20) cập nhật những gì các trình quản lý package đã cài, không phải bản thân chúng, và bao gồm mọi trình bạn có: npm (package toàn cục cũ cài lại ở `@latest`; `npm`/`corepack` để bản Node.js lo), pnpm (`update -g --latest`), Yarn Classic (`global upgrade --latest`), Bun (`update --global`), Homebrew (`update && upgrade`), uv (`tool upgrade --all`), pipx (`upgrade-all`), RubyGems (`gem update`, bỏ qua Ruby hệ thống của macOS), Composer (`global update`) và cargo (`install-update -a`, chỉ khi có plugin `cargo-install-update`). Dòng này hiển thị số package npm và Homebrew đã cũ (hai trình rẻ để kiểm tra); **nhấn Enter trên dòng đó để xem chi tiết theo từng trình quản lý**. Sau khi cập nhật, cache của từng trình cũng được dọn (npm/Yarn `cache clean`, pnpm `store prune`, Bun `pm cache rm`, `brew cleanup`, uv `cache prune`, `gem cleanup`, Composer `clear-cache`) — theo kiểu best-effort, nên lỗi khi dọn cache không làm hỏng kết quả cập nhật.
 - Lần chạy chỉ **cập nhật** sẽ tự quay lại menu. Nếu có cài mới, chương trình chờ Enter để bạn kịp đọc hướng dẫn thiết lập — lần chạy báo lỗi cũng vậy.
-- Trình cài đặt tự kiểm tra phiên bản mới nhất khi khởi động.
+- Trình cài đặt tự kiểm tra phiên bản mới nhất khi khởi động và chỉ cài bản phát hành chính thức: các bản alpha, beta, RC và canary bị bỏ qua, kể cả khi nguồn cập nhật của nhà phát hành đưa chúng lên đầu danh sách.
 
 ### 5. Dọn dẹp Mac (`cdm`)
 

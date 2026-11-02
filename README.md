@@ -95,7 +95,7 @@ Run `install-dev-tool` to open an interactive menu.
 - Git is installed through Apple's official `xcode-select --install`.
 - **Global Packages** (item 20) updates what your package managers installed, not the managers themselves. It covers every manager you have: npm (outdated globals reinstalled at `@latest`; `npm`/`corepack` are left to the Node.js tarball), pnpm (`update -g --latest`), Yarn Classic (`global upgrade --latest`), Bun (`update --global`), Homebrew (`update && upgrade`), uv (`tool upgrade --all`), pipx (`upgrade-all`), RubyGems (`gem update`, skipped for macOS's system Ruby), Composer (`global update`), and cargo (`install-update -a`, only when the `cargo-install-update` plugin is present). The row shows how many npm and Homebrew packages are outdated (the two that are cheap to poll); **press Enter on the row for a full per-manager breakdown** of what would change. After updating, each manager's cache is cleaned too (npm/Yarn `cache clean`, pnpm `store prune`, Bun `pm cache rm`, `brew cleanup`, uv `cache prune`, `gem cleanup`, Composer `clear-cache`) — best-effort, so a cleanup hiccup never fails the update.
 - A run that only **updates** drops straight back to the menu. A first-time install waits for Enter first, so its setup notes stay readable — as does a run that reported an error.
-- The installer checks for the latest versions automatically on startup.
+- The installer checks for the latest versions automatically on startup. It only offers final releases: alpha, beta, release-candidate and canary builds are skipped even when a vendor's feed lists them first.
 
 ### 5. Mac Cleanup (`cdm`)
 

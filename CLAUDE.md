@@ -102,6 +102,16 @@ how it ships (DBX, Bun, uv, Temurin). When the download URL can't be rebuilt fro
 version (codenames, build ids), the probe writes it to `$TEMP_VER_DIR/<tool>_url` and the
 installer uses that, so the version shown and the build installed can never disagree.
 
+**Probes must yield final releases only.** Vendor feeds mix in pre-releases (nodejs.org's
+`index.tab` listed `v27.0.0-alpha.0.0.0` first; OrbStack's appcast repeats each release on
+beta/canary channels; DBX publishes betas not flagged as prereleases, so `/releases/latest`
+can't be trusted), so each probe filters for them itself. GitHub-sourced probes go through
+`gh_release_versions <repo> <tag-prefix>`, which keeps only bare `X.Y.Z` tags. As a backstop,
+the normalization loop after the `LATEST_*` reads turns any value that isn't digits and dots
+into `Unknown`, which `require_latest` refuses — so a new probe that leaks a pre-release shows
+"Unknown" rather than installing it. Installers that fetch "latest" on their own are pinned
+to the probed version (Bun) or channel (rustup `stable`).
+
 `is_outdated` is the single comparison rule: an install *newer* than the reported latest is
 never treated as outdated, so the tool never suggests a downgrade.
 
